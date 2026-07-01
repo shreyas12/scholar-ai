@@ -35,3 +35,24 @@ class Document(BaseModel):
     chunk_count: int = 0
     status: str = "ready"  # ready | processing | error
     reused: bool = False  # true when an identical upload was a no-op
+
+
+# --- Concepts / coverage -----------------------------------------------------
+
+class Concept(BaseModel):
+    id: str
+    label: str
+    source_chunk_count: int
+    encountered: bool = False
+
+
+class CoverageStats(BaseModel):
+    total: int
+    encountered: int
+    coverage_pct: float
+
+
+class ExtractResult(BaseModel):
+    total_concepts: int
+    chunks_processed: int
+    prompt_version: str

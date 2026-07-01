@@ -2,6 +2,7 @@ import { ArrowLeft, FileText, MessageSquare, BarChart3 } from "lucide-react";
 import { useState } from "react";
 
 import { ChatTab } from "@/components/ChatTab";
+import { DashboardTab } from "@/components/DashboardTab";
 import { DocumentsTab } from "@/components/DocumentsTab";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -14,14 +15,6 @@ const TABS: { key: Tab; label: string; icon: typeof FileText }[] = [
   { key: "chat", label: "Chat", icon: MessageSquare },
   { key: "dashboard", label: "Dashboard", icon: BarChart3 },
 ];
-
-function Placeholder({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="rounded-lg border border-dashed py-16 text-center text-sm text-muted-foreground">
-      {children}
-    </div>
-  );
-}
 
 export function SpaceDetail({ space, onBack }: { space: Space; onBack: () => void }) {
   const [tab, setTab] = useState<Tab>("documents");
@@ -60,9 +53,7 @@ export function SpaceDetail({ space, onBack }: { space: Space; onBack: () => voi
           <DocumentsTab spaceId={space.id} onCountChange={setDocCount} />
         )}
         {tab === "chat" && <ChatTab spaceId={space.id} />}
-        {tab === "dashboard" && (
-          <Placeholder>Mastery dashboard — coming in Phase 6.</Placeholder>
-        )}
+        {tab === "dashboard" && <DashboardTab spaceId={space.id} />}
       </div>
     </div>
   );

@@ -19,11 +19,17 @@ subscriptions. No API keys required for the default experience.
   streaming chat with citations + persisted history. **36 backend tests pass**,
   including real embedding + FAISS retrieval.
 
-The full loop works today: **create a space → upload notes → chat with citations**.
-Chat generation needs [Ollama](https://ollama.com) running (`ollama pull qwen3:8b`);
-everything else runs with no external services.
+- **Phase 2:** basic concept extraction — an LLM pass builds a per-space concept
+  set from the chunks; chat tags retrieved chunks with concepts and records
+  **coverage** (concepts encountered, not documents read); a Dashboard tab shows
+  the concept map + coverage bar. **44 backend tests pass.**
 
-Next: Phase 2 (basic concept extraction — the mastery differentiator).
+The full loop works today: **create a space → upload notes → chat with citations
+→ watch the concept map fill in**. Chat + concept extraction need
+[Ollama](https://ollama.com) running (`ollama pull qwen3:8b`); everything else
+(spaces, upload, ingest, retrieval, coverage) runs with no external services.
+
+Next: Phase 3 (the full Knowledge Processing Pipeline + advanced retrieval).
 
 See:
 

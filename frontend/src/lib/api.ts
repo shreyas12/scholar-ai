@@ -135,6 +135,37 @@ export interface StreamHandlers {
   onDone?: () => void;
 }
 
+// --- Concepts / coverage -----------------------------------------------------
+
+export interface Concept {
+  id: string;
+  label: string;
+  source_chunk_count: number;
+  encountered: boolean;
+}
+
+export interface Coverage {
+  total: number;
+  encountered: number;
+  coverage_pct: number;
+}
+
+export async function listConcepts(spaceId: string): Promise<Concept[]> {
+  return jsonOrThrow(await fetch(`/api/spaces/${spaceId}/concepts`));
+}
+
+export async function getCoverage(spaceId: string): Promise<Coverage> {
+  return jsonOrThrow(await fetch(`/api/spaces/${spaceId}/concepts/coverage`));
+}
+
+export async function extractConcepts(
+  spaceId: string
+): Promise<{ total_concepts: number; chunks_processed: number }> {
+  return jsonOrThrow(
+    await fetch(`/api/spaces/${spaceId}/concepts/extract`, { method: "POST" })
+  );
+}
+
 /** POST a question and consume the NDJSON event stream. */
 export async function streamChat(
   spaceId: string,

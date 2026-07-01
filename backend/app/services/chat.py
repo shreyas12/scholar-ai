@@ -19,7 +19,8 @@ from pathlib import Path
 from .. import storage
 from ..config import get_settings
 from ..prompts import load_prompt
-from . import retrieval
+from . import concepts as concepts_svc
+from . import progress, retrieval
 from .ollama_client import OllamaClient, OllamaUnavailable
 from .spaces import get_space
 
@@ -54,6 +55,13 @@ async def stream_answer(
     context, sources = retrieval.build_context(hits)
     yield {"type": "sources", "sources": sources}
 
+    # SA-036: tag the retrieved chunks with their concepts and surface them. We
+    # only record coverage *after* a successful turn (below), so a failed
+    # generation doesn't inflate coverage. No-op until concepts are extracted.
+    touched = concepts_svc.concepts_for_chunks(space_id, [h["chunk_id"] for h in hits])
+    if touched:
+        yield {"type": "concepts", "concepts": touched}
+
     prompt = load_prompt("chat")
     rendered = prompt.render(context=context or "(no relevant material found)", question=question)
 
@@ -68,6 +76,9 @@ async def stream_answer(
         return
 
     answer = "".join(parts)
+    # SA-037: coverage evidence is recorded only now, on a completed turn.
+    if touched:
+        progress.mark_encountered(space_id, [c["id"] for c in touched])
     # Persist the turn (SA-034). Assistant message records the prompt version it
     # was generated with (SA-009) so future prompt changes are auditable.
     _append(space_id, {"role": "user", "content": question, "ts": _now()})
@@ -77,6 +88,7 @@ async def stream_answer(
             "role": "assistant",
             "content": answer,
             "sources": sources,
+            "concepts": touched,
             "prompt_version": prompt.version,
             "ts": _now(),
         },

@@ -52,14 +52,18 @@ Legend: **[BE]** backend · **[FE]** frontend · **[INFRA]** tooling/setup ·
 
 ---
 
-## EPIC 3B — Basic concept extraction (Phase 2) ⭐ moved early
+## EPIC 3B — Basic concept extraction (Phase 2) ⭐ moved early ✅ DONE
 
 *Runs on the simple chunks from Epic 2 — no graph, no advanced ingestion yet.
 Purpose: unlock the mastery differentiator ASAP and start collecting evidence.*
 
-- [ ] **SA-035** [BE+ML] `M` Lightweight LLM concept extraction over simple chunks → space concept set (`concepts.json`, flat list, no edges yet).
-- [ ] **SA-036** [BE] `S` Tag retrieved chunks with their concepts during chat; expose "concepts touched" per turn.
-- [ ] **SA-037** [BE] `S` Basic coverage: mark concepts encountered, compute space coverage %; simple concept list API.
+- [x] **SA-035** [BE+ML] `M` Lightweight LLM concept extraction over simple chunks → space concept set (`concepts.json`, flat list, no edges yet).
+- [x] **SA-036** [BE] `S` Tag retrieved chunks with their concepts during chat; expose "concepts touched" per turn.
+- [x] **SA-037** [BE] `S` Basic coverage: mark concepts encountered, compute space coverage %; simple concept list API.
+
+> Also shipped (beyond ticket, BE-only tickets): a `progress.json` evidence store
+> (coverage foundation for Epic 6–7) and a Dashboard tab surfacing coverage + the
+> concept map with encountered badges.
 
 ---
 
