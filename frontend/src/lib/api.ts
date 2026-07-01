@@ -72,3 +72,36 @@ export async function deleteSpace(id: string): Promise<void> {
   const res = await fetch(`/api/spaces/${id}`, { method: "DELETE" });
   if (!res.ok && res.status !== 204) throw new Error(`Delete failed: ${res.status}`);
 }
+
+// --- Documents ---------------------------------------------------------------
+
+export interface Document {
+  doc_id: string;
+  name: string;
+  ext: string;
+  size: number;
+  checksum: string;
+  uploaded_at: string;
+  chunk_count: number;
+  status: string;
+  reused: boolean;
+}
+
+export async function listDocuments(spaceId: string): Promise<Document[]> {
+  return jsonOrThrow(await fetch(`/api/spaces/${spaceId}/documents`));
+}
+
+export async function uploadDocument(spaceId: string, file: File): Promise<Document> {
+  const form = new FormData();
+  form.append("file", file);
+  return jsonOrThrow(
+    await fetch(`/api/spaces/${spaceId}/documents`, { method: "POST", body: form })
+  );
+}
+
+export async function deleteDocument(spaceId: string, docId: string): Promise<void> {
+  const res = await fetch(`/api/spaces/${spaceId}/documents/${docId}`, {
+    method: "DELETE",
+  });
+  if (!res.ok && res.status !== 204) throw new Error(`Delete failed: ${res.status}`);
+}

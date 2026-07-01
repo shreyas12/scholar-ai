@@ -1,6 +1,7 @@
 import { ArrowLeft, FileText, MessageSquare, BarChart3 } from "lucide-react";
 import { useState } from "react";
 
+import { DocumentsTab } from "@/components/DocumentsTab";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { Space } from "@/lib/api";
@@ -23,6 +24,7 @@ function Placeholder({ children }: { children: React.ReactNode }) {
 
 export function SpaceDetail({ space, onBack }: { space: Space; onBack: () => void }) {
   const [tab, setTab] = useState<Tab>("documents");
+  const [docCount, setDocCount] = useState(space.document_count);
 
   return (
     <div>
@@ -32,7 +34,7 @@ export function SpaceDetail({ space, onBack }: { space: Space; onBack: () => voi
 
       <h2 className="text-2xl font-bold tracking-tight">{space.name}</h2>
       <p className="text-sm text-muted-foreground">
-        {space.document_count} document{space.document_count === 1 ? "" : "s"}
+        {docCount} document{docCount === 1 ? "" : "s"}
       </p>
 
       <div className="mt-6 flex gap-1 border-b">
@@ -54,7 +56,7 @@ export function SpaceDetail({ space, onBack }: { space: Space; onBack: () => voi
 
       <div className="mt-6">
         {tab === "documents" && (
-          <Placeholder>Document upload &amp; management — coming in Epic 2.</Placeholder>
+          <DocumentsTab spaceId={space.id} onCountChange={setDocCount} />
         )}
         {tab === "chat" && (
           <Placeholder>Chat with your notes — coming in Epic 3.</Placeholder>

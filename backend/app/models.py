@@ -21,3 +21,17 @@ class Space(BaseModel):
     created_at: str
     updated_at: str
     document_count: int = 0
+
+
+# --- Documents ---------------------------------------------------------------
+
+class Document(BaseModel):
+    doc_id: str
+    name: str
+    ext: str
+    size: int
+    checksum: str
+    uploaded_at: str
+    chunk_count: int = 0
+    status: str = "ready"  # ready | processing | error
+    reused: bool = False  # true when an identical upload was a no-op
