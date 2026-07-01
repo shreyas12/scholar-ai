@@ -100,3 +100,34 @@ def test_quality_score_penalizes_garbage():
     junk = analysis.quality_score("@#$ 12 %^& 999 ~~~")
     assert good > 80
     assert junk < good
+
+
+# --- duplicate detection (SA-058) -------------------------------------------
+
+def test_dedupe_indices_drops_near_duplicates():
+    import numpy as np
+    from app.services import vectorstore
+
+    def norm(v):
+        a = np.asarray(v, dtype="float32")
+        return a / np.linalg.norm(a)
+
+    matrix = np.stack([norm([1, 0, 0]), norm([1, 0, 0.001]), norm([0, 1, 0])])
+    assert vectorstore._dedupe_indices(matrix, 0.97) == [0, 2]
+
+
+# --- semantic boundaries (SA-053) -------------------------------------------
+
+def test_semantic_windows_splits_on_topic_shift():
+    from app.services.embeddings import get_embedding_service
+
+    embed = get_embedding_service().embed
+    text = (
+        "HNSW is a graph based nearest neighbor index for vector search. "
+        "It navigates a small world graph to achieve high recall. "
+        "Bananas are a yellow tropical fruit rich in potassium. "
+        "Many people enjoy eating bananas for breakfast."
+    )
+    # target large enough that only a semantic drop can cause a split
+    windows = chunkers.semantic_windows(text, target_words=1000, embed_fn=embed, threshold=0.5)
+    assert len(windows) >= 2

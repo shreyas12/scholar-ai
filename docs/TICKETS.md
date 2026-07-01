@@ -74,28 +74,28 @@ representation, not just an index.*
 
 *Replaces SA-021 simple ingest. Each stage independently testable.*
 
-- [ ] **SA-040** [BE] `L` Stage 1 — structured extraction per format (PDF/DOCX/MD/TXT): headings, lists, tables, page numbers, paragraphs → `extracted.json`.
-- [ ] **SA-041** [BE] `M` Stage 2 — cleaning: repeated headers/footers, page numbers, whitespace, OCR artifacts, broken line-wrap. Meaning-preserving.
-- [ ] **SA-042** [BE] `M` Stage 3 — hierarchical chunking (heading→subheading→paragraph→sentence).
-- [ ] **SA-043** [BE] `S` Stage 4 — sliding-window overlap (configurable 15–25%).
-- [ ] **SA-044** [BE] `S` Stage 5 — metadata enrichment (heading path, page, chunk #, prev/next ids, timestamps).
-- [ ] **SA-045** [BE+ML] `M` Stage 6 — LLM concept extraction per chunk (batched, cached by checksum, toggleable).
-- [ ] **SA-046** [BE+ML] `M` Stage 7 — LLM chunk summarization (batched, cached, toggleable).
-- [ ] **SA-047** [BE] `S` Stage 8 — embeddings over final chunks (bge-small).
-- [ ] **SA-048** [BE] `S` Stage 9 — parent–child relationships (doc→section→chunk) persisted.
-- [ ] **SA-049** [BE] `M` Stage 10 — neighbor expansion at retrieval (include prev/next chunk).
+- [x] **SA-040** [BE] `L` Stage 1 — structured extraction per format (PDF/DOCX/MD/TXT): headings, lists, tables, page numbers, paragraphs → `extracted.json`. *(Slice B; tables not yet)*
+- [x] **SA-041** [BE] `M` Stage 2 — cleaning: repeated headers/footers, page numbers, whitespace, OCR artifacts, broken line-wrap. Meaning-preserving. *(Slice B)*
+- [x] **SA-042** [BE] `M` Stage 3 — hierarchical chunking (heading→subheading→paragraph→sentence). *(Slice B)*
+- [x] **SA-043** [BE] `S` Stage 4 — sliding-window overlap (configurable 15–25%). *(Slice B)*
+- [x] **SA-044** [BE] `S` Stage 5 — metadata enrichment (heading path, page, chunk #, prev/next ids, timestamps). *(Slice B)*
+- [ ] **SA-045** [BE+ML] `M` Stage 6 — LLM concept extraction per chunk (batched, cached by checksum, toggleable). *(Slice C)*
+- [ ] **SA-046** [BE+ML] `M` Stage 7 — LLM chunk summarization (batched, cached, toggleable). *(Slice C)*
+- [x] **SA-047** [BE] `S` Stage 8 — embeddings over final chunks (bge-small). *(via vectorstore rebuild)*
+- [ ] **SA-048** [BE] `S` Stage 9 — parent–child relationships (doc→section→chunk) persisted. *(Slice D)*
+- [ ] **SA-049** [BE] `M` Stage 10 — neighbor expansion at retrieval (include prev/next chunk). *(Slice D)*
 - [x] **SA-050** [BE] `S` Pipeline orchestrator: linear, resumable, per-stage logging + "fast ingest" mode (skip 6/7). *(Slice A)*
 - [x] **SA-051** [BE] `S` Retrieval abstraction (Stage 11 hook) so BM25/rerank/hybrid can drop in later. Interface only. *(Slice A)*
 
 ### Production-grade enhancements (§5b) — all toggleable
 
-- [ ] **SA-052** [BE] `M` Multi-level chunking: emit large (~1200) / medium (~600) / small (~250 tok) reps with `level` metadata; index all levels.
-- [ ] **SA-053** [BE+ML] `M` Semantic boundary detection: cut where inter-paragraph embedding similarity drops (fallback to fixed size).
-- [ ] **SA-054** [BE] `S` Adaptive chunk size by document type (code→small, paper→medium, textbook→large), heuristic detection.
-- [ ] **SA-055** [BE+ML] `S` Keyword extraction per chunk (TF-IDF or KeyBERT) → metadata (enables future hybrid search).
-- [ ] **SA-056** [BE+ML] `M` Named-entity extraction per chunk: algorithms, libraries, frameworks, companies, datasets, metrics, authors.
-- [ ] **SA-057** [BE] `M` Chunk quality score (0–100) from length/structure/cohesion/duplicate-ratio/OCR; auto-rebuild low-quality chunks.
-- [ ] **SA-058** [BE] `S` Duplicate detection: if embedding similarity > 0.97 to an existing chunk, reuse it instead of re-indexing.
+- [x] **SA-052** [BE] `M` Multi-level chunking: emit large / medium / small reps with `level` metadata; index all levels. *(Slice B; word targets 350/180/80)*
+- [x] **SA-053** [BE+ML] `M` Semantic boundary detection: cut where inter-sentence embedding similarity drops (fallback to fixed size). *(Slice B; opt-in via `chunk.semantic`)*
+- [x] **SA-054** [BE] `S` Adaptive chunk size by document type (code→small, paper→medium, textbook→large), heuristic detection. *(Slice B)*
+- [x] **SA-055** [BE+ML] `S` Keyword extraction per chunk (TF-IDF or KeyBERT) → metadata. *(Slice B; freq-based, dependency-light)*
+- [ ] **SA-056** [BE+ML] `M` Named-entity extraction per chunk: algorithms, libraries, frameworks, companies, datasets, metrics, authors. *(Slice C)*
+- [x] **SA-057** [BE] `M` Chunk quality score (0–100) from length/alpha/digit/non-ascii ratios. *(Slice B; auto-rebuild of low-quality chunks deferred)*
+- [x] **SA-058** [BE] `S` Duplicate detection: if embedding similarity > 0.97 to an already-kept chunk, skip it at index time. *(Slice B)*
 
 ---
 

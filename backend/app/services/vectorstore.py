@@ -17,6 +17,11 @@ from pathlib import Path
 from .. import storage
 from .embeddings import get_embedding_service
 
+# Chunks whose cosine similarity to an already-kept chunk exceeds this are treated
+# as duplicates and skipped at index time (SA-058) — e.g. identical short sections
+# emitted at multiple levels, or overlapping content across documents.
+DEDUP_THRESHOLD = 0.97
+
 
 def _index_path(space_id: str) -> Path:
     return storage.space_layout(space_id)["vectors"] / "index.faiss"
@@ -65,13 +70,37 @@ def rebuild_index(space_id: str) -> int:
     vectors = get_embedding_service().embed(texts)
     matrix = np.asarray(vectors, dtype="float32")
 
-    index = faiss.IndexFlatIP(matrix.shape[1])
-    index.add(matrix)
+    keep = _dedupe_indices(matrix, DEDUP_THRESHOLD)
+    kept_ids = [chunk_ids[i] for i in keep]
+    kept_matrix = matrix[keep]
+
+    index = faiss.IndexFlatIP(kept_matrix.shape[1])
+    index.add(kept_matrix)
 
     storage.ensure_dir(index_path.parent)
     faiss.write_index(index, str(index_path))
-    storage.write_json(id_map_path, chunk_ids)
-    return len(chunk_ids)
+    storage.write_json(id_map_path, kept_ids)
+    return len(kept_ids)
+
+
+def _dedupe_indices(matrix, threshold: float) -> list[int]:
+    """Greedily keep rows, skipping any near-duplicate of an already-kept row.
+
+    Vectors are L2-normalized, so an inner product > threshold ≈ cosine > threshold.
+    Returns kept row indices in original order.
+    """
+    import numpy as np
+
+    keep: list[int] = []
+    kept_vecs = None
+    for i in range(matrix.shape[0]):
+        vec = matrix[i]
+        if kept_vecs is not None:
+            if float(np.max(kept_vecs @ vec)) > threshold:
+                continue
+        keep.append(i)
+        kept_vecs = matrix[keep]
+    return keep
 
 
 def search(space_id: str, query: str, top_k: int = 5) -> list[dict]:

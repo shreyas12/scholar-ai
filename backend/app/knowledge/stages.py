@@ -71,7 +71,17 @@ class ChunkStage(Stage):
             doc_type, multiplier = chunkers.detect_doc_type(full_text)
             ctx.artifacts["doc_type"] = doc_type
 
-        return chunkers.chunk_multi_level(sections, levels, overlap, multiplier)
+        # Semantic boundaries (SA-053) are opt-in — they need embeddings and are
+        # slower, so default ingest stays deterministic + offline-capable.
+        embed_fn = None
+        if cfg.get("semantic", False):
+            from ..services.embeddings import get_embedding_service
+
+            embed_fn = get_embedding_service().embed
+
+        return chunkers.chunk_multi_level(
+            sections, levels, overlap, multiplier, embed_fn=embed_fn
+        )
 
 
 class EnrichStage(Stage):

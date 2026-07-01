@@ -10,8 +10,11 @@
 from __future__ import annotations
 
 import re
+from typing import Callable
 
 DEFAULT_LEVELS = {"large": 350, "medium": 180, "small": 80}
+
+_SENTENCE_RE = re.compile(r"(?<=[.!?])\s+")
 
 # doc-type -> size multiplier applied to the level targets (SA-054)
 _TYPE_MULTIPLIER = {"code": 0.6, "paper": 1.0, "textbook": 1.3, "general": 1.0}
@@ -55,19 +58,75 @@ def sliding_windows(words: list[str], size: int, overlap: float) -> list[list[st
     return out
 
 
+def split_sentences(text: str) -> list[str]:
+    return [s.strip() for s in _SENTENCE_RE.split(text) if s.strip()]
+
+
+def semantic_windows(
+    text: str,
+    target_words: int,
+    embed_fn: Callable[[list[str]], list[list[float]]],
+    threshold: float = 0.5,
+) -> list[list[str]]:
+    """Split at *semantic* boundaries (SA-053).
+
+    Embeds sentences and starts a new chunk when the similarity to the previous
+    sentence drops below ``threshold`` — so a coherent discussion stays together —
+    while still capping each chunk near ``target_words``.
+    """
+    sentences = split_sentences(text)
+    if len(sentences) <= 1:
+        words = text.split()
+        return [words] if words else []
+
+    vectors = embed_fn(sentences)
+    chunks: list[list[str]] = []
+    current: list[str] = []
+    current_words = 0
+    prev_vec: list[float] | None = None
+
+    for sentence, vec in zip(sentences, vectors):
+        w = len(sentence.split())
+        drop = prev_vec is not None and _cosine(prev_vec, vec) < threshold
+        if current and (current_words + w > target_words or drop):
+            chunks.append(" ".join(current).split())
+            current, current_words = [], 0
+        current.append(sentence)
+        current_words += w
+        prev_vec = vec
+
+    if current:
+        chunks.append(" ".join(current).split())
+    return chunks
+
+
+def _cosine(a: list[float], b: list[float]) -> float:
+    # embeddings are L2-normalized, so dot product is cosine similarity
+    return sum(x * y for x, y in zip(a, b))
+
+
 def chunk_multi_level(
     sections: list[dict],
     levels: dict[str, int],
     overlap: float,
     multiplier: float = 1.0,
+    embed_fn: Callable[[list[str]], list[list[float]]] | None = None,
 ) -> list[dict]:
     """Emit chunks for every (level, section). Grouped by level so per-level
-    ordering (and later prev/next linking) is contiguous."""
+    ordering (and later prev/next linking) is contiguous.
+
+    When ``embed_fn`` is provided, boundaries are semantic (SA-053); otherwise a
+    fixed sliding window is used.
+    """
     chunks: list[dict] = []
     for level_name, base in levels.items():
         size = max(20, int(base * multiplier))
         for sec in sections:
-            for window in sliding_windows(sec["text"].split(), size, overlap):
+            if embed_fn is not None:
+                windows = semantic_windows(sec["text"], size, embed_fn)
+            else:
+                windows = sliding_windows(sec["text"].split(), size, overlap)
+            for window in windows:
                 text = " ".join(window).strip()
                 if text:
                     chunks.append(
