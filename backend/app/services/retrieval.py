@@ -38,6 +38,42 @@ def retrieve(space_id: str, query: str, top_k: int = 5) -> list[dict]:
     return _default_retriever.retrieve(space_id, query, top_k)
 
 
+def expand_neighbors(space_id: str, hits: list[dict], window: int = 1) -> list[dict]:
+    """Widen each hit with its prev/next chunks for context (SA-049).
+
+    The hit's own metadata/score are preserved; only its ``text`` grows to include
+    up to ``window`` neighbors on each side (same level, via prev/next links).
+    Citations therefore stay tied to the actual hits, not the glue text.
+    """
+    if window <= 0:
+        return hits
+    records = vectorstore.load_all_chunks(space_id)
+
+    def walk(rec: dict, link: str) -> list[str]:
+        ids: list[str] = []
+        cur = rec
+        for _ in range(window):
+            nxt = cur.get(link)
+            if nxt and nxt in records:
+                ids.append(nxt)
+                cur = records[nxt]
+            else:
+                break
+        return ids
+
+    expanded: list[dict] = []
+    for hit in hits:
+        prev_ids = list(reversed(walk(hit, "prev_chunk_id")))
+        next_ids = walk(hit, "next_chunk_id")
+        texts = (
+            [records[i]["text"] for i in prev_ids]
+            + [hit["text"]]
+            + [records[i]["text"] for i in next_ids]
+        )
+        expanded.append({**hit, "text": " ".join(texts), "neighbors": prev_ids + next_ids})
+    return expanded
+
+
 def _citation_label(rec: dict) -> str:
     doc = rec.get("document", "document")
     page = rec.get("page")

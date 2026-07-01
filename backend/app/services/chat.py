@@ -52,13 +52,18 @@ async def stream_answer(
     k = top_k or settings.top_k
 
     hits = retrieval.retrieve(space_id, question, top_k=k)
-    context, sources = retrieval.build_context(hits)
+
+    # SA-036: tag the *actual* hits with concepts (before neighbor glue is added).
+    touched = concepts_svc.concepts_for_chunks(space_id, [h["chunk_id"] for h in hits])
+
+    # SA-049: widen each hit with neighboring chunks for context. Citations stay
+    # tied to the hits themselves.
+    context_hits = retrieval.expand_neighbors(space_id, hits, settings.retrieval_neighbors)
+    context, sources = retrieval.build_context(context_hits)
     yield {"type": "sources", "sources": sources}
 
-    # SA-036: tag the retrieved chunks with their concepts and surface them. We
-    # only record coverage *after* a successful turn (below), so a failed
+    # We only record coverage *after* a successful turn (below), so a failed
     # generation doesn't inflate coverage. No-op until concepts are extracted.
-    touched = concepts_svc.concepts_for_chunks(space_id, [h["chunk_id"] for h in hits])
     if touched:
         yield {"type": "concepts", "concepts": touched}
 

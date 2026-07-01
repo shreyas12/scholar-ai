@@ -24,15 +24,15 @@ def _make_doc(space_id: str, doc_id: str, text: str):
 
 
 CHUNK_FIELDS = {
-    "chunk_id", "space", "doc_id", "document", "level", "chunk_number",
-    "total_chunks", "page", "heading_path", "section_title", "prev_chunk_id",
-    "next_chunk_id", "quality", "keywords", "text", "created_at",
+    "chunk_id", "space", "doc_id", "document", "section_id", "parent_id", "level",
+    "chunk_number", "total_chunks", "page", "heading_path", "section_title",
+    "prev_chunk_id", "next_chunk_id", "quality", "keywords", "text", "created_at",
 }
 
 
 def test_pipeline_produces_chunk_records(env):
     path = _make_doc("ml", "ann", "HNSW graph search " * 500)
-    chunks, log = pipeline.run_document("ml", "ann", "ann.txt", ".txt", "abc123", path)
+    chunks, sections, log = pipeline.run_document("ml", "ann", "ann.txt", ".txt", "abc123", path)
     assert len(chunks) >= 3  # at least one chunk per level
     assert chunks[0]["chunk_id"].startswith("ann:")
     assert chunks[0]["document"] == "ann.txt"
@@ -45,20 +45,55 @@ def test_pipeline_produces_chunk_records(env):
     }
 
 
+def test_parent_child_sections(env):
+    path = _make_doc("ml", "ann", "HNSW graph search " * 500)
+    chunks, sections, _ = pipeline.run_document("ml", "ann", "ann.txt", ".txt", "abc", path)
+    # every chunk points at a section that exists in the returned section map
+    sec_id = chunks[0]["section_id"]
+    assert sec_id in sections
+    assert chunks[0]["parent_id"] == sec_id
+    assert "text" in sections[sec_id]
+
+
 def test_stage_cache_hit_on_reingest(env):
     path = _make_doc("ml", "ann", "HNSW graph search " * 500)
-    _, log1 = pipeline.run_document("ml", "ann", "ann.txt", ".txt", "abc123", path)
+    _, _, log1 = pipeline.run_document("ml", "ann", "ann.txt", ".txt", "abc123", path)
     assert all(e["cached"] is False for e in log1 if "cached" in e)
 
-    _, log2 = pipeline.run_document("ml", "ann", "ann.txt", ".txt", "abc123", path)
+    _, _, log2 = pipeline.run_document("ml", "ann", "ann.txt", ".txt", "abc123", path)
     assert all(e["cached"] is True for e in log2 if "cached" in e)
 
 
 def test_cache_invalidated_on_checksum_change(env):
     path = _make_doc("ml", "ann", "HNSW graph search " * 500)
     pipeline.run_document("ml", "ann", "ann.txt", ".txt", "sum-A", path)
-    _, log = pipeline.run_document("ml", "ann", "ann.txt", ".txt", "sum-B", path)
+    _, _, log = pipeline.run_document("ml", "ann", "ann.txt", ".txt", "sum-B", path)
     assert all(e["cached"] is False for e in log if "cached" in e)
+
+
+def test_expand_neighbors(env, monkeypatch):
+    from app.services import retrieval, vectorstore
+
+    records = {
+        "d:m:0": {"chunk_id": "d:m:0", "text": "A", "next_chunk_id": "d:m:1", "prev_chunk_id": None},
+        "d:m:1": {"chunk_id": "d:m:1", "text": "B", "next_chunk_id": "d:m:2", "prev_chunk_id": "d:m:0"},
+        "d:m:2": {"chunk_id": "d:m:2", "text": "C", "next_chunk_id": None, "prev_chunk_id": "d:m:1"},
+    }
+    monkeypatch.setattr(vectorstore, "load_all_chunks", lambda space_id: records)
+
+    hit = dict(records["d:m:1"], score=0.9)
+    out = retrieval.expand_neighbors("ml", [hit], window=1)
+    assert out[0]["text"] == "A B C"        # prev + hit + next
+    assert out[0]["chunk_id"] == "d:m:1"    # citation stays the hit
+    assert out[0]["score"] == 0.9
+    assert set(out[0]["neighbors"]) == {"d:m:0", "d:m:2"}
+
+
+def test_expand_neighbors_disabled(env):
+    from app.services import retrieval
+
+    hits = [{"chunk_id": "x", "text": "only"}]
+    assert retrieval.expand_neighbors("ml", hits, window=0) is hits
 
 
 def test_processor_registry(env):

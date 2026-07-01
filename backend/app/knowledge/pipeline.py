@@ -138,8 +138,12 @@ def run_document(
     ext: str,
     checksum: str,
     original_path: Path,
-) -> tuple[list[dict], list[dict]]:
-    """Run the default pipeline for one document. Returns (chunks, stage_log)."""
+) -> tuple[list[dict], dict[str, dict], list[dict]]:
+    """Run the default pipeline for one document.
+
+    Returns ``(chunks, sections, stage_log)`` where ``sections`` maps
+    ``section_id -> {heading_path, page, text}`` for parent-document retrieval.
+    """
     ctx = PipelineContext(
         space_id=space_id,
         doc_id=doc_id,
@@ -150,4 +154,14 @@ def run_document(
         config=load_config(),
     )
     chunks = default_pipeline().run(ctx)
-    return chunks, ctx.stage_log
+
+    sections: dict[str, dict] = {}
+    for sec in ctx.artifacts.get("sections", []):
+        section_id = f"{doc_id}:sec:{sec['section_index']}"
+        sections[section_id] = {
+            "section_id": section_id,
+            "heading_path": sec.get("heading_path", []),
+            "page": sec.get("page"),
+            "text": sec["text"],
+        }
+    return chunks, sections, ctx.stage_log

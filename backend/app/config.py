@@ -36,6 +36,9 @@ class Settings(BaseSettings):
     # --- Chunking / retrieval ---
     chunk_overlap: float = 0.2
     top_k: int = 5
+    # Neighbor expansion (SA-049): include N prev/next chunks around each hit for
+    # context. 0 disables.
+    retrieval_neighbors: int = 1
 
     # --- API ---
     cors_origins: list[str] = ["http://localhost:5173", "http://127.0.0.1:5173"]

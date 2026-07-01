@@ -102,12 +102,17 @@ class EnrichStage(Stage):
             level_idx[lv] = i + 1
             total = level_totals[lv]
             hp = c.get("heading_path") or []
+            sec_idx = c.get("section_index")
+            section_id = f"{ctx.doc_id}:sec:{sec_idx}" if sec_idx is not None else None
             records.append(
                 {
                     "chunk_id": f"{ctx.doc_id}:{lv}:{i}",
                     "space": ctx.space_id,
                     "doc_id": ctx.doc_id,
                     "document": ctx.name,
+                    # parent-child hierarchy (SA-048): doc -> section -> chunk
+                    "section_id": section_id,
+                    "parent_id": section_id,
                     "level": lv,
                     "chunk_number": i,
                     "total_chunks": total,

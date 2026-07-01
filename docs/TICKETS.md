@@ -82,8 +82,8 @@ representation, not just an index.*
 - [ ] **SA-045** [BE+ML] `M` Stage 6 — LLM concept extraction per chunk (batched, cached by checksum, toggleable). *(Slice C)*
 - [ ] **SA-046** [BE+ML] `M` Stage 7 — LLM chunk summarization (batched, cached, toggleable). *(Slice C)*
 - [x] **SA-047** [BE] `S` Stage 8 — embeddings over final chunks (bge-small). *(via vectorstore rebuild)*
-- [ ] **SA-048** [BE] `S` Stage 9 — parent–child relationships (doc→section→chunk) persisted. *(Slice D)*
-- [ ] **SA-049** [BE] `M` Stage 10 — neighbor expansion at retrieval (include prev/next chunk). *(Slice D)*
+- [x] **SA-048** [BE] `S` Stage 9 — parent–child relationships (doc→section→chunk) persisted. *(Slice D; section_id/parent_id on chunks + sections.json)*
+- [x] **SA-049** [BE] `M` Stage 10 — neighbor expansion at retrieval (include prev/next chunk). *(Slice D; configurable window, citations stay tied to hits)*
 - [x] **SA-050** [BE] `S` Pipeline orchestrator: linear, resumable, per-stage logging + "fast ingest" mode (skip 6/7). *(Slice A)*
 - [x] **SA-051** [BE] `S` Retrieval abstraction (Stage 11 hook) so BM25/rerank/hybrid can drop in later. Interface only. *(Slice A)*
 

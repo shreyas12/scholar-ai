@@ -71,9 +71,11 @@ def list_documents(space_id: str) -> list[Document]:
 
 
 def _build_chunks(space_id: str, doc_id: str, name: str, ext: str, checksum: str, path: Path) -> int:
-    """Run the Knowledge Processing Pipeline and persist chunks.json. Returns count."""
-    chunks, _log = pipeline.run_document(space_id, doc_id, name, ext, checksum, path)
-    storage.write_json(_doc_dir(space_id, doc_id) / "chunks.json", chunks)
+    """Run the Knowledge Processing Pipeline and persist chunks + sections. Returns count."""
+    chunks, sections, _log = pipeline.run_document(space_id, doc_id, name, ext, checksum, path)
+    doc_dir = _doc_dir(space_id, doc_id)
+    storage.write_json(doc_dir / "chunks.json", chunks)
+    storage.write_json(doc_dir / "sections.json", sections)  # SA-048 parent store
     return len(chunks)
 
 

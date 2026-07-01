@@ -48,6 +48,18 @@ def load_all_chunks(space_id: str) -> dict[str, dict]:
     return records
 
 
+def load_all_sections(space_id: str) -> dict[str, dict]:
+    """section_id -> section record (SA-048), across every document."""
+    docs_dir = storage.space_layout(space_id)["documents"]
+    sections: dict[str, dict] = {}
+    if not docs_dir.is_dir():
+        return sections
+    for doc_dir in sorted(docs_dir.iterdir()):
+        for sid, rec in storage.read_json(doc_dir / "sections.json", default={}).items():
+            sections[sid] = rec
+    return sections
+
+
 def rebuild_index(space_id: str) -> int:
     """Rebuild the space index from all document chunks. Returns chunk count."""
     import faiss

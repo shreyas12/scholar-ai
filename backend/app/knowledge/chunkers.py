@@ -134,6 +134,7 @@ def chunk_multi_level(
                             "text": text,
                             "page": sec.get("page"),
                             "heading_path": sec.get("heading_path", []),
+                            "section_index": sec.get("section_index"),
                             "level": level_name,
                         }
                     )

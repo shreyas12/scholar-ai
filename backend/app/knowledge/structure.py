@@ -100,7 +100,12 @@ def build_sections(blocks: list[dict]) -> list[dict]:
         text = " ".join(body).strip()
         if text:
             sections.append(
-                {"heading_path": [h for _, h in stack], "page": body_page, "text": text}
+                {
+                    "section_index": len(sections),
+                    "heading_path": [h for _, h in stack],
+                    "page": body_page,
+                    "text": text,
+                }
             )
         body = []
         body_page = None
