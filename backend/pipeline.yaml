@@ -20,3 +20,7 @@ stages:
       small: 80
   enrich:             # final chunk records: metadata, quality score, keywords
     enabled: true
+  summary:            # LLM one-line summary per medium chunk (needs Ollama)
+    enabled: false
+  ner:                # LLM named-entity extraction per medium chunk (needs Ollama)
+    enabled: false

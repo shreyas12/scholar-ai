@@ -79,8 +79,8 @@ representation, not just an index.*
 - [x] **SA-042** [BE] `M` Stage 3 — hierarchical chunking (heading→subheading→paragraph→sentence). *(Slice B)*
 - [x] **SA-043** [BE] `S` Stage 4 — sliding-window overlap (configurable 15–25%). *(Slice B)*
 - [x] **SA-044** [BE] `S` Stage 5 — metadata enrichment (heading path, page, chunk #, prev/next ids, timestamps). *(Slice B)*
-- [ ] **SA-045** [BE+ML] `M` Stage 6 — LLM concept extraction per chunk (batched, cached by checksum, toggleable). *(Slice C)*
-- [ ] **SA-046** [BE+ML] `M` Stage 7 — LLM chunk summarization (batched, cached, toggleable). *(Slice C)*
+- [x] **SA-045** [BE+ML] `M` Stage 6 — LLM concept extraction (toggleable, cached). *(Slice C; done per-**section** not per-chunk — cheaper + robust across levels)*
+- [x] **SA-046** [BE+ML] `M` Stage 7 — LLM chunk summarization (toggleable, cached). *(Slice C; SummaryStage, medium-level, default off)*
 - [x] **SA-047** [BE] `S` Stage 8 — embeddings over final chunks (bge-small). *(via vectorstore rebuild)*
 - [x] **SA-048** [BE] `S` Stage 9 — parent–child relationships (doc→section→chunk) persisted. *(Slice D; section_id/parent_id on chunks + sections.json)*
 - [x] **SA-049** [BE] `M` Stage 10 — neighbor expansion at retrieval (include prev/next chunk). *(Slice D; configurable window, citations stay tied to hits)*
@@ -93,7 +93,7 @@ representation, not just an index.*
 - [x] **SA-053** [BE+ML] `M` Semantic boundary detection: cut where inter-sentence embedding similarity drops (fallback to fixed size). *(Slice B; opt-in via `chunk.semantic`)*
 - [x] **SA-054** [BE] `S` Adaptive chunk size by document type (code→small, paper→medium, textbook→large), heuristic detection. *(Slice B)*
 - [x] **SA-055** [BE+ML] `S` Keyword extraction per chunk (TF-IDF or KeyBERT) → metadata. *(Slice B; freq-based, dependency-light)*
-- [ ] **SA-056** [BE+ML] `M` Named-entity extraction per chunk: algorithms, libraries, frameworks, companies, datasets, metrics, authors. *(Slice C)*
+- [x] **SA-056** [BE+ML] `M` Named-entity extraction per chunk: algorithms, libraries, frameworks, companies, datasets, metrics, authors. *(Slice C; NerStage, medium-level, default off)*
 - [x] **SA-057** [BE] `M` Chunk quality score (0–100) from length/alpha/digit/non-ascii ratios. *(Slice B; auto-rebuild of low-quality chunks deferred)*
 - [x] **SA-058** [BE] `S` Duplicate detection: if embedding similarity > 0.97 to an already-kept chunk, skip it at index time. *(Slice B)*
 
@@ -104,12 +104,12 @@ representation, not just an index.*
 *The §6 production retrieval flow. Each stage toggleable; degrades to plain
 embed→FAISS if all are off.*
 
-- [ ] **SA-110** [BE+ML] `M` Query expansion: synonyms + acronym expansion before retrieval (HNSW → "Hierarchical Navigable Small World", ANN, graph index). *(Slice E-llm)*
-- [ ] **SA-111** [BE+ML] `M` Multi-query retrieval: generate sub-questions, retrieve each, merge + dedupe. *(Slice E-llm)*
+- [x] **SA-110** [BE+ML] `M` Query expansion: synonyms + acronym expansion before retrieval (HNSW → "Hierarchical Navigable Small World", ANN, graph index). *(Slice E-llm; graceful fallback)*
+- [x] **SA-111** [BE+ML] `M` Multi-query retrieval: generate sub-questions, retrieve each, merge + dedupe. *(Slice E-llm)*
 - [x] **SA-112** [BE] `M` Merge + rerank across sub-queries and chunk levels. *(Slice E-det; diversity-by-section + score backfill)*
 - [x] **SA-113** [BE] `M` Context compression: squeeze top-k context to a token budget before the LLM. *(Slice E-det; extractive/budget; LLM compression future)*
 - [x] **SA-114** [BE] `S` Retrieval confidence: compute from avg similarity + #chunks above threshold; return `{confidence, reason, avg_similarity}`. *(Slice E-det)*
-- [ ] **SA-115** [BE] `M` Retrieval orchestrator wiring the full §6 pipeline (expansion→multi-query→embed→FAISS→rerank→neighbor→compression→LLM→evidence). *(Slice E-llm)*
+- [x] **SA-115** [BE] `M` Retrieval orchestrator wiring the full §6 pipeline (expansion→multi-query→embed→FAISS→rerank→neighbor→compression→LLM→evidence). *(Slice E-llm; retrieve_advanced, async, graceful)*
 - [x] **SA-116** [FE] `S` Show retrieval confidence + grounding detail in the chat UI ("92% · 4 relevant chunks · avg sim 0.89"). *(Slice E-det)*
 
 ---

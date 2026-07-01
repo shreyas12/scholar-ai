@@ -39,10 +39,11 @@ def test_pipeline_produces_chunk_records(env):
     assert CHUNK_FIELDS <= set(chunks[0])
     # multi-level: all three representations present
     assert {c["level"] for c in chunks} == {"large", "medium", "small"}
-    # stage log records every stage
-    assert {e["stage"] for e in log if "stage" in e} == {
+    # the deterministic stages run; the LLM stages are present but skipped (off)
+    assert {e["stage"] for e in log if not e.get("skipped")} == {
         "extract", "clean", "section", "chunk", "enrich"
     }
+    assert {e["stage"] for e in log if e.get("skipped")} == {"summary", "ner"}
 
 
 def test_parent_child_sections(env):
@@ -94,6 +95,46 @@ def test_expand_neighbors_disabled(env):
 
     hits = [{"chunk_id": "x", "text": "only"}]
     assert retrieval.expand_neighbors("ml", hits, window=0) is hits
+
+
+# --- LLM stages (Slice C) ----------------------------------------------------
+
+def _ctx_with_chunks(chunks, cfg):
+    return pipeline.PipelineContext(
+        space_id="ml", doc_id="d", name="n", ext=".txt", checksum="x",
+        original_path=None, config=cfg, artifacts={"chunks": chunks},
+    )
+
+
+def test_summary_stage_only_medium(env, monkeypatch):
+    from app.knowledge.stages import SummaryStage
+    from app.services.ollama_client import OllamaClient
+
+    monkeypatch.setattr(OllamaClient, "generate_sync", lambda self, p, model=None: "A summary.")
+    chunks = [
+        {"level": "medium", "text": "long text about HNSW"},
+        {"level": "large", "text": "other"},
+    ]
+    out = SummaryStage().run(_ctx_with_chunks(chunks, {}))
+    assert out[0]["summary"] == "A summary."
+    assert "summary" not in out[1]  # non-medium skipped
+
+
+def test_ner_stage_parses_entities(env, monkeypatch):
+    from app.knowledge.stages import NerStage
+    from app.services.ollama_client import OllamaClient
+
+    payload = '{"algorithms": ["HNSW"], "libraries": ["FAISS"], "authors": []}'
+    monkeypatch.setattr(OllamaClient, "generate_sync", lambda self, p, model=None: payload)
+    chunks = [{"level": "medium", "text": "HNSW with FAISS"}]
+    out = NerStage().run(_ctx_with_chunks(chunks, {}))
+    assert out[0]["entities"] == {"algorithms": ["HNSW"], "libraries": ["FAISS"]}
+
+
+def test_llm_stages_off_by_default(env):
+    cfg = pipeline.load_config()
+    assert cfg["stages"]["summary"]["enabled"] is False
+    assert cfg["stages"]["ner"]["enabled"] is False
 
 
 def test_processor_registry(env):

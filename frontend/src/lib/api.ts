@@ -169,7 +169,7 @@ export async function getCoverage(spaceId: string): Promise<Coverage> {
 
 export async function extractConcepts(
   spaceId: string
-): Promise<{ total_concepts: number; chunks_processed: number }> {
+): Promise<{ total_concepts: number; sources_processed: number }> {
   return jsonOrThrow(
     await fetch(`/api/spaces/${spaceId}/concepts/extract`, { method: "POST" })
   );

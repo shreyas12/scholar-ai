@@ -8,10 +8,13 @@ Epic 4B) will later slot in; for now it's a clean single-query retrieve.
 
 from __future__ import annotations
 
+import json
 from typing import Protocol
 
 from ..config import get_settings
+from ..prompts import load_prompt
 from . import vectorstore
+from .ollama_client import OllamaClient, OllamaUnavailable
 
 # Cosine similarity above which a retrieved chunk counts as "relevant" (SA-114).
 RELEVANT_THRESHOLD = 0.5
@@ -67,6 +70,77 @@ def retrieve(space_id: str, query: str, top_k: int = 5) -> list[dict]:
     fetch = max(top_k, top_k * get_settings().retrieval_fetch_multiplier)
     raw = _default_retriever.retrieve(space_id, query, fetch)
     return rerank(raw, top_k)
+
+
+# --- LLM-assisted retrieval (Slice E-llm) -----------------------------------
+
+def _parse_str_list(raw: str) -> list[str]:
+    start, end = raw.find("["), raw.rfind("]")
+    if start != -1 and end > start:
+        try:
+            arr = json.loads(raw[start : end + 1])
+            if isinstance(arr, list):
+                return [str(x).strip() for x in arr if str(x).strip()]
+        except json.JSONDecodeError:
+            pass
+    return []
+
+
+async def expand_query(query: str) -> list[str]:
+    """Synonym/acronym expansion of the query (SA-110)."""
+    prompt = load_prompt("query_expansion")
+    raw = await OllamaClient().generate(prompt.render(question=query))
+    return _parse_str_list(raw)
+
+
+async def generate_subqueries(query: str) -> list[str]:
+    """Decompose into focused sub-questions (SA-111)."""
+    prompt = load_prompt("multi_query")
+    raw = await OllamaClient().generate(prompt.render(question=query))
+    return _parse_str_list(raw)
+
+
+def _merge_by_chunk(hit_lists: list[list[dict]]) -> list[dict]:
+    best: dict[str, dict] = {}
+    for hits in hit_lists:
+        for h in hits:
+            cid = h["chunk_id"]
+            if cid not in best or h.get("score", 0.0) > best[cid].get("score", 0.0):
+                best[cid] = h
+    return list(best.values())
+
+
+async def retrieve_advanced(
+    space_id: str, query: str, top_k: int = 5, *, expand: bool = False, multi: bool = False
+) -> list[dict]:
+    """Full retrieval orchestrator (SA-115): expansion + multi-query → merge → rerank.
+
+    Degrades gracefully: if the LLM is unavailable (or both flags off) it falls back
+    to a plain single-query retrieval, so chat still works offline.
+    """
+    settings = get_settings()
+    queries = [query]
+    if expand or multi:
+        try:
+            if expand:
+                queries += await expand_query(query)
+            if multi:
+                queries += await generate_subqueries(query)
+        except OllamaUnavailable:
+            queries = [query]
+
+    # de-dupe queries (case-insensitive), preserve order
+    seen: set = set()
+    unique: list[str] = []
+    for q in queries:
+        key = q.strip().lower()
+        if key and key not in seen:
+            seen.add(key)
+            unique.append(q)
+
+    fetch = max(top_k, top_k * settings.retrieval_fetch_multiplier)
+    collected = [_default_retriever.retrieve(space_id, q, fetch) for q in unique]
+    return rerank(_merge_by_chunk(collected), top_k)
 
 
 def retrieval_confidence(hits: list[dict]) -> dict:

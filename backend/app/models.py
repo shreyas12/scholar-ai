@@ -54,5 +54,5 @@ class CoverageStats(BaseModel):
 
 class ExtractResult(BaseModel):
     total_concepts: int
-    chunks_processed: int
+    sources_processed: int
     prompt_version: str

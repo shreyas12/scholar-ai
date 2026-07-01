@@ -71,3 +71,42 @@ def test_compress_truncates_tail_when_room():
 def test_compress_under_budget_keeps_all():
     hits = [_hit("a", 0.9, text="short"), _hit("b", 0.8, text="also short")]
     assert len(retrieval.compress_context(hits, budget_chars=10_000)) == 2
+
+
+# --- LLM-assisted retrieval (SA-110/111/115) --------------------------------
+
+async def test_retrieve_advanced_merges_expanded(monkeypatch):
+    async def fake_gen(self, prompt, model=None):
+        return '["hnsw graph variant"]'
+
+    monkeypatch.setattr(retrieval.OllamaClient, "generate", fake_gen)
+
+    seen_queries = []
+
+    def fake_retrieve(space_id, q, k):
+        seen_queries.append(q)
+        if "variant" in q:
+            return [_hit("c2", 0.7, "s2")]
+        return [_hit("c1", 0.9, "s1")]
+
+    monkeypatch.setattr(retrieval._default_retriever, "retrieve", fake_retrieve)
+
+    hits = await retrieval.retrieve_advanced("ml", "hnsw?", top_k=5, expand=True)
+    assert {h["chunk_id"] for h in hits} == {"c1", "c2"}  # merged across queries
+    assert any("variant" in q for q in seen_queries)
+
+
+async def test_retrieve_advanced_graceful_when_ollama_down(monkeypatch):
+    from app.services.ollama_client import OllamaUnavailable
+
+    async def boom(self, prompt, model=None):
+        raise OllamaUnavailable("down")
+
+    monkeypatch.setattr(retrieval.OllamaClient, "generate", boom)
+    monkeypatch.setattr(
+        retrieval._default_retriever, "retrieve", lambda s, q, k: [_hit("c1", 0.9, "s1")]
+    )
+
+    # expansion requested but Ollama down → falls back to the plain query
+    hits = await retrieval.retrieve_advanced("ml", "q", top_k=5, expand=True, multi=True)
+    assert [h["chunk_id"] for h in hits] == ["c1"]

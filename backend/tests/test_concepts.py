@@ -63,7 +63,7 @@ def test_extract_builds_concept_set(client, monkeypatch):
     assert resp.status_code == 200
     body = resp.json()
     assert body["total_concepts"] == 2
-    assert body["chunks_processed"] >= 1
+    assert body["sources_processed"] >= 1
     assert body["prompt_version"] == "concept_extraction_v1"
 
     concepts = client.get("/api/spaces/ml/concepts").json()

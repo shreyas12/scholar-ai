@@ -31,6 +31,11 @@ class OllamaClient:
         self.model = model or settings.ollama_model
         self.timeout = timeout if timeout is not None else settings.ollama_timeout
 
+    def _http_timeout(self) -> "httpx.Timeout":
+        # Fail fast on connect (server down/unreachable) but allow a long read —
+        # local generation is legitimately slow. Keeps graceful fallback snappy.
+        return httpx.Timeout(self.timeout, connect=5.0)
+
     async def is_up(self) -> bool:
         """Cheap reachability + version check. Never raises."""
         try:
@@ -54,8 +59,19 @@ class OllamaClient:
         """Single-turn completion. Returns the response text."""
         payload = {"model": model or self.model, "prompt": prompt, "stream": False}
         try:
-            async with httpx.AsyncClient(timeout=self.timeout) as client:
+            async with httpx.AsyncClient(timeout=self._http_timeout()) as client:
                 resp = await client.post(f"{self.base_url}/api/generate", json=payload)
+                resp.raise_for_status()
+                return resp.json().get("response", "")
+        except httpx.HTTPError as exc:
+            raise OllamaUnavailable(_hint(self.base_url)) from exc
+
+    def generate_sync(self, prompt: str, *, model: str | None = None) -> str:
+        """Blocking completion for use inside the (synchronous) ingest pipeline."""
+        payload = {"model": model or self.model, "prompt": prompt, "stream": False}
+        try:
+            with httpx.Client(timeout=self._http_timeout()) as client:
+                resp = client.post(f"{self.base_url}/api/generate", json=payload)
                 resp.raise_for_status()
                 return resp.json().get("response", "")
         except httpx.HTTPError as exc:
@@ -71,7 +87,7 @@ class OllamaClient:
         """
         payload = {"model": model or self.model, "prompt": prompt, "stream": True}
         try:
-            async with httpx.AsyncClient(timeout=self.timeout) as client:
+            async with httpx.AsyncClient(timeout=self._http_timeout()) as client:
                 async with client.stream(
                     "POST", f"{self.base_url}/api/generate", json=payload
                 ) as resp:
@@ -91,7 +107,7 @@ class OllamaClient:
         """Multi-turn chat. ``messages`` is a list of {role, content}."""
         payload = {"model": model or self.model, "messages": messages, "stream": False}
         try:
-            async with httpx.AsyncClient(timeout=self.timeout) as client:
+            async with httpx.AsyncClient(timeout=self._http_timeout()) as client:
                 resp = await client.post(f"{self.base_url}/api/chat", json=payload)
                 resp.raise_for_status()
                 return resp.json().get("message", {}).get("content", "")

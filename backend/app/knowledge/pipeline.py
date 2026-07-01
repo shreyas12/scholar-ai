@@ -41,6 +41,9 @@ DEFAULT_CONFIG: dict[str, Any] = {
             "levels": {"large": 350, "medium": 180, "small": 80},
         },
         "enrich": {"enabled": True},
+        # LLM stages (Slice C) — need Ollama, so OFF by default (fast/offline ingest)
+        "summary": {"enabled": False},
+        "ner": {"enabled": False},
     }
 }
 
@@ -124,10 +127,26 @@ class Pipeline:
 
 def default_pipeline() -> Pipeline:
     # Imported here to avoid a circular import (stages import from this module).
-    from .stages import ChunkStage, CleanStage, EnrichStage, ExtractStage, SectionStage
+    from .stages import (
+        ChunkStage,
+        CleanStage,
+        EnrichStage,
+        ExtractStage,
+        NerStage,
+        SectionStage,
+        SummaryStage,
+    )
 
     return Pipeline(
-        [ExtractStage(), CleanStage(), SectionStage(), ChunkStage(), EnrichStage()]
+        [
+            ExtractStage(),
+            CleanStage(),
+            SectionStage(),
+            ChunkStage(),
+            EnrichStage(),
+            SummaryStage(),  # off by default
+            NerStage(),  # off by default
+        ]
     )
 
 

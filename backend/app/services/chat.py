@@ -51,7 +51,15 @@ async def stream_answer(
     settings = get_settings()
     k = top_k or settings.top_k
 
-    hits = retrieval.retrieve(space_id, question, top_k=k)
+    # SA-115: LLM-assisted retrieval (expansion + multi-query) when enabled;
+    # degrades to plain retrieval offline.
+    hits = await retrieval.retrieve_advanced(
+        space_id,
+        question,
+        top_k=k,
+        expand=settings.query_expansion,
+        multi=settings.multi_query,
+    )
 
     # SA-036: tag the *actual* hits with concepts (before neighbor glue is added).
     touched = concepts_svc.concepts_for_chunks(space_id, [h["chunk_id"] for h in hits])

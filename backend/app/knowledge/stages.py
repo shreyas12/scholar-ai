@@ -14,11 +14,13 @@ Slice C; semantic boundaries + dedup arrive in Slice B-embed.
 
 from __future__ import annotations
 
+import json
 from collections import Counter
 from datetime import datetime, timezone
 from typing import Any
 
 from ..config import get_settings
+from ..prompts import load_prompt
 from . import analysis, chunkers, cleaning, processors, structure
 from .pipeline import PipelineContext, Stage
 
@@ -128,3 +130,54 @@ class EnrichStage(Stage):
                 }
             )
         return records
+
+
+# --- LLM stages (Slice C) — toggleable, default OFF, medium-level only --------
+# They mutate the enriched chunk records, so both output to "chunks".
+
+class SummaryStage(Stage):
+    """Stage 7 (SA-046): one-line LLM summary per medium chunk."""
+
+    name = "summary"
+    version = "1"
+    output_key = "chunks"
+
+    def run(self, ctx: PipelineContext) -> Any:
+        from ..services.ollama_client import OllamaClient
+
+        prompt = load_prompt("summarization")
+        client = OllamaClient()
+        for c in ctx.artifacts["chunks"]:
+            if c.get("level") == "medium":
+                c["summary"] = client.generate_sync(prompt.render(chunk=c["text"])).strip()
+        return ctx.artifacts["chunks"]
+
+
+class NerStage(Stage):
+    """Stage (SA-056): named-entity extraction per medium chunk."""
+
+    name = "ner"
+    version = "1"
+    output_key = "chunks"
+
+    def run(self, ctx: PipelineContext) -> Any:
+        from ..services.ollama_client import OllamaClient
+
+        prompt = load_prompt("ner")
+        client = OllamaClient()
+        for c in ctx.artifacts["chunks"]:
+            if c.get("level") == "medium":
+                c["entities"] = _parse_entities(client.generate_sync(prompt.render(chunk=c["text"])))
+        return ctx.artifacts["chunks"]
+
+
+def _parse_entities(raw: str) -> dict:
+    start, end = raw.find("{"), raw.rfind("}")
+    if start != -1 and end > start:
+        try:
+            obj = json.loads(raw[start : end + 1])
+            if isinstance(obj, dict):
+                return {k: v for k, v in obj.items() if v}
+        except json.JSONDecodeError:
+            pass
+    return {}

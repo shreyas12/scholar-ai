@@ -43,6 +43,10 @@ class Settings(BaseSettings):
     retrieval_fetch_multiplier: int = 4
     # Context compression budget in characters before the LLM (SA-113).
     max_context_chars: int = 6000
+    # LLM-assisted retrieval (SA-110/111) — need Ollama, off by default so chat
+    # works offline. When on + Ollama down, retrieval degrades to plain search.
+    query_expansion: bool = False
+    multi_query: bool = False
 
     # --- API ---
     cors_origins: list[str] = ["http://localhost:5173", "http://127.0.0.1:5173"]
