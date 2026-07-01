@@ -1,18 +1,20 @@
-import { ArrowLeft, FileText, MessageSquare, BarChart3 } from "lucide-react";
+import { ArrowLeft, FileText, MessageSquare, BarChart3, GraduationCap } from "lucide-react";
 import { useState } from "react";
 
 import { ChatTab } from "@/components/ChatTab";
 import { DashboardTab } from "@/components/DashboardTab";
 import { DocumentsTab } from "@/components/DocumentsTab";
+import { QuizTab } from "@/components/QuizTab";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { Space } from "@/lib/api";
 
-type Tab = "documents" | "chat" | "dashboard";
+type Tab = "documents" | "chat" | "quiz" | "dashboard";
 
 const TABS: { key: Tab; label: string; icon: typeof FileText }[] = [
   { key: "documents", label: "Documents", icon: FileText },
   { key: "chat", label: "Chat", icon: MessageSquare },
+  { key: "quiz", label: "Quiz", icon: GraduationCap },
   { key: "dashboard", label: "Dashboard", icon: BarChart3 },
 ];
 
@@ -53,6 +55,7 @@ export function SpaceDetail({ space, onBack }: { space: Space; onBack: () => voi
           <DocumentsTab spaceId={space.id} onCountChange={setDocCount} />
         )}
         {tab === "chat" && <ChatTab spaceId={space.id} />}
+        {tab === "quiz" && <QuizTab spaceId={space.id} />}
         {tab === "dashboard" && <DashboardTab spaceId={space.id} />}
       </div>
     </div>

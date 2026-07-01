@@ -129,19 +129,19 @@ graph over the (now richer) advanced chunks.*
 
 ## EPIC 6 — Assessment & evidence (Phase 5, event-driven)
 
-- [ ] **SA-070** [BE+ML] `M` Question generator per concept: recall (explain), recognition (MCQ/T-F/matching), application (scenario).
-- [ ] **SA-071** [BE+ML] `M` LLM-judge grader for free-text (recall/application) with explicit rubric in one file.
-- [ ] **SA-072** [BE] `S` Recognition auto-grading (deterministic for MCQ/T-F/matching).
-- [ ] **SA-073** [BE] `S` Confidence capture (1–5) attached to each answer event.
-- [ ] **SA-074** [BE] `S` Evidence store: append events to `progress.json` per concept (recall/recognition/application/confidence).
-- [ ] **SA-075** [BE] `S` Misconception flag when incorrect + high confidence.
-- [ ] **SA-076** [FE] `M` Quiz UI: question card, answer input (free-text / MCQ), confidence slider, feedback + explanation.
-- [ ] **SA-077** [BE] `S` Chat-as-evidence hook: optionally grade a chat answer and record it against a concept.
+- [x] **SA-070** [BE+ML] `M` Question generator per concept: recall (explain), recognition (MCQ/T-F/matching), application (scenario).
+- [x] **SA-071** [BE+ML] `M` LLM-judge grader for free-text (recall/application) with explicit rubric in one file.
+- [x] **SA-072** [BE] `S` Recognition auto-grading (deterministic for MCQ/T-F/matching).
+- [x] **SA-073** [BE] `S` Confidence capture (1–5) attached to each answer event.
+- [x] **SA-074** [BE] `S` Evidence store: append events to `progress.json` per concept (recall/recognition/application/confidence).
+- [x] **SA-075** [BE] `S` Misconception flag when incorrect + high confidence.
+- [x] **SA-076** [FE] `M` Quiz UI: question card, answer input (free-text / MCQ), confidence slider, feedback + explanation.
+- [x] **SA-077** [BE] `S` Chat-as-evidence hook: optionally grade a chat answer and record it against a concept.
 
 ### Event-driven core (§7b)
 
-- [ ] **SA-078** [BE] `M` Event store: append-only interaction events (question → retrieved concepts → answer → evaluation) to `events.json`. Mastery never mutated directly.
-- [ ] **SA-079** [BE] `M` Mastery as a projection: recompute affected concepts from the event log (replayable when the formula changes).
+- [x] **SA-078** [BE] `M` Event store: append-only interaction events (question → retrieved concepts → answer → evaluation) to `events.json`. Mastery never mutated directly.
+- [x] **SA-079** [BE] `M` Mastery as a projection: recompute affected concepts from the event log (replayable when the formula changes).
 
 ---
 

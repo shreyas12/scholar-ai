@@ -28,14 +28,22 @@ subscriptions. No API keys required for the default experience.
   expansion, multi-query). Toggleable stages via `pipeline.yaml`.
 - **Phase 4:** the **concept graph** — canonicalized concepts, LLM-inferred
   prerequisite edges, a graph API, and "ready to learn" coverage.
+- **Phase 5:** **assessment + event-driven mastery** — per-concept quizzes
+  (recall / recognition / application) generated from your material, LLM-judge
+  grading for free-text + deterministic MCQ grading, confidence capture,
+  misconception flags, an append-only event log, and mastery computed as a
+  replayable projection over that log. A Quiz tab drives it; the Dashboard shows
+  demonstrated mastery per concept.
 
-**~85 backend tests pass.** The loop works today: **create a space → upload notes
-→ chat with grounded, confidence-scored citations → watch the concept map + graph
-build**. LLM features (chat generation, concept extraction, summaries, query
+**105 backend tests pass.** The loop works today: **create a space → upload notes
+→ chat with grounded, confidence-scored citations → build the concept map + graph
+→ quiz yourself and watch demonstrated mastery accumulate**. LLM features (chat
+generation, concept extraction, question generation, grading, summaries, query
 expansion) need [Ollama](https://ollama.com) (`ollama pull qwen3:8b`); everything
 else runs with no external services.
 
-Next: Phase 5 (assessment + event-driven mastery).
+Next: Phase 5 continued — Epic 7 mastery-formula refinement (retention decay,
+tuned weights) + Epic 8 mastery dashboard polish.
 
 See:
 

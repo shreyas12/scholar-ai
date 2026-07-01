@@ -194,6 +194,86 @@ export async function getConceptGraph(spaceId: string): Promise<ConceptGraph> {
   return jsonOrThrow(await fetch(`/api/spaces/${spaceId}/concepts/graph`));
 }
 
+// --- Assessment / mastery (Epic 6) -------------------------------------------
+
+export interface QuizQuestion {
+  id: string;
+  type: "recall" | "recognition" | "application";
+  question: string;
+  options: string[] | null;
+}
+
+export interface Quiz {
+  quiz_id: string;
+  concept_id: string;
+  concept_label: string;
+  questions: QuizQuestion[];
+}
+
+export interface AnswerFeedback {
+  correct: boolean;
+  score: number;
+  reasoning: string;
+  misconception: string | null;
+  misconception_flag: boolean;
+  correct_answer: string | null;
+}
+
+export async function generateQuiz(spaceId: string, conceptId: string): Promise<Quiz> {
+  return jsonOrThrow(
+    await fetch(`/api/spaces/${spaceId}/concepts/${conceptId}/quiz`, { method: "POST" })
+  );
+}
+
+export async function submitAnswer(
+  spaceId: string,
+  quizId: string,
+  body: { question_id: string; answer?: string; selected_index?: number | null; confidence: number }
+): Promise<AnswerFeedback> {
+  return jsonOrThrow(
+    await fetch(`/api/spaces/${spaceId}/quiz/${quizId}/answer`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    })
+  );
+}
+
+export interface ConceptMastery {
+  concept_id: string;
+  label: string;
+  mastery: number | null;
+  bucket: "mastered" | "learning" | "weak" | "unknown";
+  evidence_count: number;
+  coverage: boolean;
+  recall: number | null;
+  recognition: number | null;
+  application: number | null;
+  misconceptions: number;
+  last_correct: string | null;
+  avg_confidence: number | null;
+  avg_retrieval_confidence: number | null;
+}
+
+export interface MasterySummary {
+  total_concepts: number;
+  assessed: number;
+  overall_mastery: number | null;
+  mastered: number;
+  learning: number;
+  weak: number;
+  unknown: number;
+}
+
+export interface MasteryReport {
+  summary: MasterySummary;
+  concepts: ConceptMastery[];
+}
+
+export async function getMastery(spaceId: string): Promise<MasteryReport> {
+  return jsonOrThrow(await fetch(`/api/spaces/${spaceId}/mastery`));
+}
+
 /** POST a question and consume the NDJSON event stream. */
 export async function streamChat(
   spaceId: string,

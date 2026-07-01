@@ -7,10 +7,12 @@ import {
   extractConcepts,
   getConceptGraph,
   getCoverage,
+  getMastery,
   listConcepts,
   type Concept,
   type ConceptGraph,
   type Coverage,
+  type MasteryReport,
 } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
@@ -18,18 +20,21 @@ export function DashboardTab({ spaceId }: { spaceId: string }) {
   const [concepts, setConcepts] = useState<Concept[] | null>(null);
   const [coverage, setCoverage] = useState<Coverage | null>(null);
   const [graph, setGraph] = useState<ConceptGraph | null>(null);
+  const [mastery, setMastery] = useState<MasteryReport | null>(null);
   const [extracting, setExtracting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   async function refresh() {
-    const [c, cov, g] = await Promise.all([
+    const [c, cov, g, m] = await Promise.all([
       listConcepts(spaceId),
       getCoverage(spaceId),
       getConceptGraph(spaceId),
+      getMastery(spaceId),
     ]);
     setConcepts(c);
     setCoverage(cov);
     setGraph(g);
+    setMastery(m);
   }
 
   useEffect(() => {
@@ -87,11 +92,15 @@ export function DashboardTab({ spaceId }: { spaceId: string }) {
               />
             </div>
             <p className="mt-2 text-xs text-muted-foreground">
-              Coverage means encountered — not yet mastered. Quizzes (coming next)
-              turn coverage into real evidence.
+              Coverage means encountered — not yet mastered. Take a quiz to turn
+              coverage into demonstrated mastery.
             </p>
           </CardContent>
         </Card>
+      )}
+
+      {mastery && mastery.summary.assessed > 0 && (
+        <MasterySection report={mastery} />
       )}
 
       {concepts === null ? (
@@ -142,6 +151,64 @@ export function DashboardTab({ spaceId }: { spaceId: string }) {
         </>
       )}
     </div>
+  );
+}
+
+const BUCKET_STYLE: Record<string, { bar: string; text: string; label: string }> = {
+  mastered: { bar: "bg-emerald-500", text: "text-emerald-700", label: "Mastered" },
+  learning: { bar: "bg-blue-500", text: "text-blue-700", label: "Learning" },
+  weak: { bar: "bg-amber-500", text: "text-amber-700", label: "Weak" },
+  unknown: { bar: "bg-muted-foreground/40", text: "text-muted-foreground", label: "Untested" },
+};
+
+function MasterySection({ report }: { report: MasteryReport }) {
+  const assessed = report.concepts.filter((c) => c.mastery !== null);
+  return (
+    <Card className="mb-4">
+      <CardContent className="py-4">
+        <div className="flex items-baseline justify-between">
+          <span className="text-sm font-medium">Demonstrated mastery</span>
+          {report.summary.overall_mastery !== null && (
+            <span className="text-sm text-muted-foreground">
+              {report.summary.overall_mastery}% overall ·{" "}
+              {report.summary.assessed} of {report.summary.total_concepts} assessed
+            </span>
+          )}
+        </div>
+
+        <div className="mt-3 space-y-2.5">
+          {assessed.map((c) => {
+            const style = BUCKET_STYLE[c.bucket];
+            return (
+              <div key={c.concept_id}>
+                <div className="mb-1 flex items-center justify-between text-sm">
+                  <span className="flex items-center gap-1.5">
+                    {c.label}
+                    {c.misconceptions > 0 && (
+                      <span
+                        className="rounded-full bg-amber-100 px-1.5 text-xs text-amber-700"
+                        title="Confident but incorrect — a flagged misconception"
+                      >
+                        ⚠ {c.misconceptions}
+                      </span>
+                    )}
+                  </span>
+                  <span className={cn("text-xs font-medium", style.text)}>
+                    {style.label} · {Math.round(c.mastery ?? 0)}%
+                  </span>
+                </div>
+                <div className="h-1.5 overflow-hidden rounded-full bg-muted">
+                  <div
+                    className={cn("h-full rounded-full transition-all", style.bar)}
+                    style={{ width: `${c.mastery ?? 0}%` }}
+                  />
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 

@@ -83,3 +83,79 @@ class ConceptDetail(BaseModel):
     encountered: bool
     prerequisites: list[str]  # labels
     source_sections: list[str]
+
+
+# --- Assessment (Epic 6) -----------------------------------------------------
+
+class QuizQuestion(BaseModel):
+    """A single question as sent to the client — no answer key leaked."""
+
+    id: str
+    type: str  # recall | recognition | application
+    question: str
+    options: list[str] | None = None  # present for recognition (MCQ) only
+
+
+class Quiz(BaseModel):
+    quiz_id: str
+    concept_id: str
+    concept_label: str
+    questions: list[QuizQuestion]
+
+
+class AnswerSubmit(BaseModel):
+    question_id: str
+    answer: str = ""  # free-text answer (recall / application)
+    selected_index: int | None = None  # chosen option (recognition)
+    confidence: int = Field(ge=1, le=5)  # self-report (SA-073)
+
+
+class AnswerFeedback(BaseModel):
+    correct: bool
+    score: int  # 0-100
+    reasoning: str
+    misconception: str | None = None
+    misconception_flag: bool = False  # incorrect + high confidence (SA-075)
+    correct_answer: str | None = None
+
+
+class ChatAnswerGrade(BaseModel):
+    """Grade a chat answer against a concept as evidence (SA-077)."""
+
+    question: str
+    answer: str
+    confidence: int = Field(ge=1, le=5)
+    retrieval_confidence: float | None = None
+
+
+# --- Mastery projection (Epic 6/7) -------------------------------------------
+
+class ConceptMastery(BaseModel):
+    concept_id: str
+    label: str
+    mastery: float | None = None  # 0-100, None = no evidence yet
+    bucket: str  # mastered | learning | weak | unknown
+    evidence_count: int = 0
+    coverage: bool = False
+    recall: float | None = None
+    recognition: float | None = None
+    application: float | None = None
+    misconceptions: int = 0
+    last_correct: str | None = None
+    avg_confidence: float | None = None
+    avg_retrieval_confidence: float | None = None
+
+
+class MasterySummary(BaseModel):
+    total_concepts: int
+    assessed: int
+    overall_mastery: float | None = None
+    mastered: int = 0
+    learning: int = 0
+    weak: int = 0
+    unknown: int = 0
+
+
+class MasteryReport(BaseModel):
+    summary: MasterySummary
+    concepts: list[ConceptMastery]

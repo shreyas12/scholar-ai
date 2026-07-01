@@ -18,7 +18,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from .config import get_settings
-from .routers import chat, concepts, documents, health, spaces
+from .routers import assessment, chat, concepts, documents, health, spaces
 from .storage import ensure_dir, spaces_dir
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
@@ -55,6 +55,7 @@ def create_app() -> FastAPI:
     app.include_router(documents.router)
     app.include_router(chat.router)
     app.include_router(concepts.router)
+    app.include_router(assessment.router)
     return app
 
 
