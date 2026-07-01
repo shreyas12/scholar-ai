@@ -56,3 +56,30 @@ class ExtractResult(BaseModel):
     total_concepts: int
     sources_processed: int
     prompt_version: str
+
+
+# --- Concept graph (Epic 5) --------------------------------------------------
+
+class GraphNode(BaseModel):
+    id: str
+    label: str
+    encountered: bool = False
+    ready: bool = False  # all prerequisites encountered (SA-063)
+
+
+class GraphEdge(BaseModel):
+    source: str  # prerequisite concept id
+    target: str  # concept that depends on it
+
+
+class ConceptGraph(BaseModel):
+    nodes: list[GraphNode]
+    edges: list[GraphEdge]
+
+
+class ConceptDetail(BaseModel):
+    id: str
+    label: str
+    encountered: bool
+    prerequisites: list[str]  # labels
+    source_sections: list[str]

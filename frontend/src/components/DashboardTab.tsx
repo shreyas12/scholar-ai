@@ -1,13 +1,15 @@
-import { Brain, Loader2, Sparkles } from "lucide-react";
+import { Brain, GitBranch, Loader2, Sparkles } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
   extractConcepts,
+  getConceptGraph,
   getCoverage,
   listConcepts,
   type Concept,
+  type ConceptGraph,
   type Coverage,
 } from "@/lib/api";
 import { cn } from "@/lib/utils";
@@ -15,13 +17,19 @@ import { cn } from "@/lib/utils";
 export function DashboardTab({ spaceId }: { spaceId: string }) {
   const [concepts, setConcepts] = useState<Concept[] | null>(null);
   const [coverage, setCoverage] = useState<Coverage | null>(null);
+  const [graph, setGraph] = useState<ConceptGraph | null>(null);
   const [extracting, setExtracting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   async function refresh() {
-    const [c, cov] = await Promise.all([listConcepts(spaceId), getCoverage(spaceId)]);
+    const [c, cov, g] = await Promise.all([
+      listConcepts(spaceId),
+      getCoverage(spaceId),
+      getConceptGraph(spaceId),
+    ]);
     setConcepts(c);
     setCoverage(cov);
+    setGraph(g);
   }
 
   useEffect(() => {
@@ -97,31 +105,67 @@ export function DashboardTab({ spaceId }: { spaceId: string }) {
           <p>Upload documents, then extract concepts to map this subject.</p>
         </div>
       ) : (
-        <div className="flex flex-wrap gap-2">
-          {concepts.map((c) => (
-            <span
-              key={c.id}
-              className={cn(
-                "inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-sm",
-                c.encountered
-                  ? "border-emerald-200 bg-emerald-50 text-emerald-700"
-                  : "bg-background text-muted-foreground"
-              )}
-              title={`${c.source_chunk_count} source chunk${
-                c.source_chunk_count === 1 ? "" : "s"
-              }`}
-            >
-              <span
-                className={cn(
-                  "h-1.5 w-1.5 rounded-full",
-                  c.encountered ? "bg-emerald-500" : "bg-muted-foreground/40"
-                )}
-              />
-              {c.label}
-            </span>
-          ))}
-        </div>
+        <>
+          <div className="flex flex-wrap gap-2">
+            {concepts.map((c) => {
+              const ready = graph?.nodes.find((n) => n.id === c.id)?.ready;
+              return (
+                <span
+                  key={c.id}
+                  className={cn(
+                    "inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-sm",
+                    c.encountered
+                      ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                      : ready
+                        ? "border-blue-200 bg-blue-50 text-blue-700"
+                        : "bg-background text-muted-foreground"
+                  )}
+                  title={
+                    ready && !c.encountered
+                      ? "Ready to learn — prerequisites covered"
+                      : `${c.source_chunk_count} source section${c.source_chunk_count === 1 ? "" : "s"}`
+                  }
+                >
+                  <span
+                    className={cn(
+                      "h-1.5 w-1.5 rounded-full",
+                      c.encountered ? "bg-emerald-500" : ready ? "bg-blue-500" : "bg-muted-foreground/40"
+                    )}
+                  />
+                  {c.label}
+                </span>
+              );
+            })}
+          </div>
+
+          {graph && graph.edges.length > 0 && <Prerequisites graph={graph} />}
+        </>
       )}
+    </div>
+  );
+}
+
+function Prerequisites({ graph }: { graph: ConceptGraph }) {
+  const label = (id: string) => graph.nodes.find((n) => n.id === id)?.label ?? id;
+  // group prerequisites by the dependent concept
+  const byTarget = new Map<string, string[]>();
+  for (const e of graph.edges) {
+    byTarget.set(e.target, [...(byTarget.get(e.target) ?? []), label(e.source)]);
+  }
+  return (
+    <div className="mt-6">
+      <div className="mb-2 flex items-center gap-1.5 text-sm font-medium text-muted-foreground">
+        <GitBranch className="h-4 w-4" /> Prerequisites
+      </div>
+      <ul className="space-y-1 text-sm">
+        {[...byTarget.entries()].map(([target, prereqs]) => (
+          <li key={target}>
+            <span className="font-medium">{label(target)}</span>
+            <span className="text-muted-foreground"> needs </span>
+            {prereqs.join(", ")}
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }

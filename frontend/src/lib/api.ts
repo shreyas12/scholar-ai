@@ -175,6 +175,25 @@ export async function extractConcepts(
   );
 }
 
+export interface GraphNode {
+  id: string;
+  label: string;
+  encountered: boolean;
+  ready: boolean;
+}
+export interface GraphEdge {
+  source: string;
+  target: string;
+}
+export interface ConceptGraph {
+  nodes: GraphNode[];
+  edges: GraphEdge[];
+}
+
+export async function getConceptGraph(spaceId: string): Promise<ConceptGraph> {
+  return jsonOrThrow(await fetch(`/api/spaces/${spaceId}/concepts/graph`));
+}
+
 /** POST a question and consume the NDJSON event stream. */
 export async function streamChat(
   spaceId: string,

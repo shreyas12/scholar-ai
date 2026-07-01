@@ -114,16 +114,16 @@ embed→FAISS if all are off.*
 
 ---
 
-## EPIC 5 — Concept graph (Phase 4)
+## EPIC 5 — Concept graph (Phase 4) ✅ DONE
 
 *Builds on the basic concepts from Epic 3B — adds canonicalization + prerequisite
 graph over the (now richer) advanced chunks.*
 
-- [ ] **SA-060** [BE+ML] `M` Canonicalize/dedup concepts across chunks (normalize + fuzzy match) into a clean concept set.
-- [ ] **SA-061** [BE+ML] `M` Prerequisite edges: LLM pass to link concepts into a graph → `concepts.json`.
-- [ ] **SA-062** [BE] `S` Concepts API: list concepts, get graph, get source chunks per concept.
-- [ ] **SA-063** [BE] `S` Refine coverage from graph (supersedes SA-037 basic coverage).
-- [ ] **SA-064** [FE] `S` (Optional MVP) simple concept list view with coverage badges. (Full graph viz is out of scope.)
+- [x] **SA-060** [BE+ML] `M` Canonicalize/dedup concepts (embedding-based label merge, cosine > 0.80) into a clean concept set.
+- [x] **SA-061** [BE+ML] `M` Prerequisite edges: LLM pass to link concepts into a graph → `concepts.json`. *(mock-tested)*
+- [x] **SA-062** [BE] `S` Concepts API: list, get graph (nodes+edges), get concept detail (prereqs + source sections).
+- [x] **SA-063** [BE] `S` Refine coverage from graph — canonical set + per-node "ready to learn" (prereqs covered).
+- [x] **SA-064** [FE] `S` Dashboard concept map with coverage + ready-to-learn badges + prerequisites list. (Full graph viz still out of scope.)
 
 ---
 

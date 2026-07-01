@@ -19,17 +19,23 @@ subscriptions. No API keys required for the default experience.
   streaming chat with citations + persisted history. **36 backend tests pass**,
   including real embedding + FAISS retrieval.
 
-- **Phase 2:** basic concept extraction — an LLM pass builds a per-space concept
-  set from the chunks; chat tags retrieved chunks with concepts and records
-  **coverage** (concepts encountered, not documents read); a Dashboard tab shows
-  the concept map + coverage bar. **44 backend tests pass.**
+- **Phase 2:** basic concept extraction + **coverage** (concepts encountered, not
+  documents read).
+- **Phase 3:** the full **Knowledge Processing Pipeline** — structured extraction,
+  cleaning, hierarchical + adaptive + multi-level chunking, quality scoring,
+  keywords, semantic boundaries, dedup, parent-child hierarchy — plus advanced
+  retrieval (rerank, neighbor expansion, compression, retrieval confidence, query
+  expansion, multi-query). Toggleable stages via `pipeline.yaml`.
+- **Phase 4:** the **concept graph** — canonicalized concepts, LLM-inferred
+  prerequisite edges, a graph API, and "ready to learn" coverage.
 
-The full loop works today: **create a space → upload notes → chat with citations
-→ watch the concept map fill in**. Chat + concept extraction need
-[Ollama](https://ollama.com) running (`ollama pull qwen3:8b`); everything else
-(spaces, upload, ingest, retrieval, coverage) runs with no external services.
+**~85 backend tests pass.** The loop works today: **create a space → upload notes
+→ chat with grounded, confidence-scored citations → watch the concept map + graph
+build**. LLM features (chat generation, concept extraction, summaries, query
+expansion) need [Ollama](https://ollama.com) (`ollama pull qwen3:8b`); everything
+else runs with no external services.
 
-Next: Phase 3 (the full Knowledge Processing Pipeline + advanced retrieval).
+Next: Phase 5 (assessment + event-driven mastery).
 
 See:
 

@@ -37,9 +37,9 @@ class OllamaClient:
         return httpx.Timeout(self.timeout, connect=5.0)
 
     async def is_up(self) -> bool:
-        """Cheap reachability + version check. Never raises."""
+        """Cheap reachability + version check. Never raises (fast connect timeout)."""
         try:
-            async with httpx.AsyncClient(timeout=5.0) as client:
+            async with httpx.AsyncClient(timeout=httpx.Timeout(5.0, connect=2.0)) as client:
                 resp = await client.get(f"{self.base_url}/api/version")
                 return resp.status_code == 200
         except httpx.HTTPError:
@@ -47,7 +47,7 @@ class OllamaClient:
 
     async def list_models(self) -> list[str]:
         try:
-            async with httpx.AsyncClient(timeout=10.0) as client:
+            async with httpx.AsyncClient(timeout=httpx.Timeout(10.0, connect=2.0)) as client:
                 resp = await client.get(f"{self.base_url}/api/tags")
                 resp.raise_for_status()
                 data = resp.json()
