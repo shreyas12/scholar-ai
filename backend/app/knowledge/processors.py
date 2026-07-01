@@ -11,8 +11,11 @@ thin compatibility shim over this registry).
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 from typing import Protocol, runtime_checkable
+
+from . import structure
 
 
 class UnsupportedFormat(Exception):
@@ -56,7 +59,10 @@ class TextProcessor:
     extensions = (".txt", ".md", ".markdown")
 
     def extract(self, path: Path) -> list[dict]:
-        return [{"page": None, "text": path.read_text(encoding="utf-8", errors="replace")}]
+        text = path.read_text(encoding="utf-8", errors="replace")
+        if path.suffix.lower() in (".md", ".markdown"):
+            return structure.parse_markdown(text)
+        return structure.parse_plain(text)
 
 
 class PdfProcessor:
@@ -66,12 +72,12 @@ class PdfProcessor:
         from pypdf import PdfReader
 
         reader = PdfReader(str(path))
-        segments: list[dict] = []
+        blocks: list[dict] = []
         for i, page in enumerate(reader.pages, start=1):
             text = page.extract_text() or ""
             if text.strip():
-                segments.append({"page": i, "text": text})
-        return segments
+                blocks.extend(structure.parse_plain(text, page=i))
+        return blocks
 
 
 class DocxProcessor:
@@ -81,8 +87,21 @@ class DocxProcessor:
         import docx
 
         document = docx.Document(str(path))
-        text = "\n".join(p.text for p in document.paragraphs if p.text.strip())
-        return [{"page": None, "text": text}]
+        blocks: list[dict] = []
+        for para in document.paragraphs:
+            t = para.text.strip()
+            if not t:
+                continue
+            style = (para.style.name or "").lower()
+            if style.startswith("heading"):
+                m = re.search(r"(\d+)", style)
+                level = int(m.group(1)) if m else 1
+                blocks.append({"type": "heading", "level": level, "text": t, "page": None})
+            elif "list" in style:
+                blocks.append({"type": "list", "level": 0, "text": t, "page": None})
+            else:
+                blocks.append({"type": "paragraph", "level": 0, "text": t, "page": None})
+        return blocks
 
 
 register(TextProcessor())

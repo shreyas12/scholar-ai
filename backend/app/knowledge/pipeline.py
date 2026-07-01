@@ -33,7 +33,14 @@ DEFAULT_CONFIG: dict[str, Any] = {
     "stages": {
         "extract": {"enabled": True},
         "clean": {"enabled": True},
-        "chunk": {"enabled": True, "chunk_words": 220},
+        "section": {"enabled": True},
+        "chunk": {
+            "enabled": True,
+            "adaptive": True,
+            "overlap": 0.2,
+            "levels": {"large": 350, "medium": 180, "small": 80},
+        },
+        "enrich": {"enabled": True},
     }
 }
 
@@ -117,9 +124,11 @@ class Pipeline:
 
 def default_pipeline() -> Pipeline:
     # Imported here to avoid a circular import (stages import from this module).
-    from .stages import ChunkStage, CleanStage, ExtractStage
+    from .stages import ChunkStage, CleanStage, EnrichStage, ExtractStage, SectionStage
 
-    return Pipeline([ExtractStage(), CleanStage(), ChunkStage()])
+    return Pipeline(
+        [ExtractStage(), CleanStage(), SectionStage(), ChunkStage(), EnrichStage()]
+    )
 
 
 def run_document(

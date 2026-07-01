@@ -1,22 +1,25 @@
-"""Pipeline stages (Slice A).
+"""Pipeline stages (Slice B).
 
-These wrap the *existing* simple-ingest behavior in the staged shape:
+The deterministic knowledge-processing pipeline:
 
-* ``ExtractStage``  — format → text segments (via the processor registry)
-* ``CleanStage``    — passthrough for now (Stage 2 cleaning arrives in Slice B)
-* ``ChunkStage``    — sliding-window chunks + full chunk-record metadata
+* ``ExtractStage``  — format → structured blocks (headings/paragraphs/lists)
+* ``CleanStage``    — strip repeated headers/footers, page numbers, whitespace
+* ``SectionStage``  — group blocks into sections under their heading path
+* ``ChunkStage``    — adaptive + multi-level (large/medium/small) sliding chunks
+* ``EnrichStage``   — final chunk records: metadata, quality score, keywords
 
-Later slices replace/extend these without changing the orchestrator.
+LLM stages (concept extraction, summarization) slot in after ``ChunkStage`` in
+Slice C; semantic boundaries + dedup arrive in Slice B-embed.
 """
 
 from __future__ import annotations
 
+from collections import Counter
 from datetime import datetime, timezone
 from typing import Any
 
 from ..config import get_settings
-from ..services import chunking
-from . import processors
+from . import analysis, chunkers, cleaning, processors, structure
 from .pipeline import PipelineContext, Stage
 
 
@@ -26,8 +29,8 @@ def _now() -> str:
 
 class ExtractStage(Stage):
     name = "extract"
-    version = "1"
-    output_key = "segments"
+    version = "2"
+    output_key = "blocks"
 
     def run(self, ctx: PipelineContext) -> Any:
         return processors.get_processor(ctx.ext).extract(ctx.original_path)
@@ -35,43 +38,77 @@ class ExtractStage(Stage):
 
 class CleanStage(Stage):
     name = "clean"
-    version = "1"
-    output_key = "cleaned"
+    version = "2"
+    output_key = "cleaned_blocks"
 
     def run(self, ctx: PipelineContext) -> Any:
-        # Slice A: no-op cleaning — preserve segments verbatim.
-        return ctx.artifacts["segments"]
+        return cleaning.clean_blocks(ctx.artifacts["blocks"])
+
+
+class SectionStage(Stage):
+    name = "section"
+    version = "1"
+    output_key = "sections"
+
+    def run(self, ctx: PipelineContext) -> Any:
+        return structure.build_sections(ctx.artifacts["cleaned_blocks"])
 
 
 class ChunkStage(Stage):
     name = "chunk"
+    version = "2"
+    output_key = "raw_chunks"
+
+    def run(self, ctx: PipelineContext) -> Any:
+        cfg = self.stage_config(ctx)
+        levels = cfg.get("levels", chunkers.DEFAULT_LEVELS)
+        overlap = cfg.get("overlap", get_settings().chunk_overlap)
+        sections = ctx.artifacts["sections"]
+
+        multiplier = 1.0
+        if cfg.get("adaptive", True):
+            full_text = " ".join(s["text"] for s in sections)
+            doc_type, multiplier = chunkers.detect_doc_type(full_text)
+            ctx.artifacts["doc_type"] = doc_type
+
+        return chunkers.chunk_multi_level(sections, levels, overlap, multiplier)
+
+
+class EnrichStage(Stage):
+    name = "enrich"
     version = "1"
     output_key = "chunks"
 
     def run(self, ctx: PipelineContext) -> Any:
-        cfg = self.stage_config(ctx)
-        chunk_words = cfg.get("chunk_words", chunking.DEFAULT_CHUNK_WORDS)
-        overlap = get_settings().chunk_overlap
-
-        segments = ctx.artifacts["cleaned"]
-        raw = chunking.chunk_segments(segments, chunk_words=chunk_words, overlap=overlap)
-
-        total = len(raw)
+        raw = ctx.artifacts["raw_chunks"]
         now = _now()
+        level_totals = Counter(c["level"] for c in raw)
+        level_idx: dict[str, int] = {}
+
         records: list[dict] = []
-        for i, ch in enumerate(raw):
+        for c in raw:
+            lv = c["level"]
+            i = level_idx.get(lv, 0)
+            level_idx[lv] = i + 1
+            total = level_totals[lv]
+            hp = c.get("heading_path") or []
             records.append(
                 {
-                    "chunk_id": f"{ctx.doc_id}:{i}",
+                    "chunk_id": f"{ctx.doc_id}:{lv}:{i}",
                     "space": ctx.space_id,
                     "doc_id": ctx.doc_id,
                     "document": ctx.name,
+                    "level": lv,
                     "chunk_number": i,
                     "total_chunks": total,
-                    "page": ch.get("page"),
-                    "prev_chunk_id": f"{ctx.doc_id}:{i - 1}" if i > 0 else None,
-                    "next_chunk_id": f"{ctx.doc_id}:{i + 1}" if i < total - 1 else None,
-                    "text": ch["text"],
+                    "page": c.get("page"),
+                    "heading_path": hp,
+                    "section_title": hp[-1] if hp else None,
+                    "prev_chunk_id": f"{ctx.doc_id}:{lv}:{i - 1}" if i > 0 else None,
+                    "next_chunk_id": f"{ctx.doc_id}:{lv}:{i + 1}" if i < total - 1 else None,
+                    "quality": analysis.quality_score(c["text"]),
+                    "keywords": analysis.extract_keywords(c["text"]),
+                    "text": c["text"],
                     "created_at": now,
                 }
             )

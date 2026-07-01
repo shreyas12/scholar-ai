@@ -41,7 +41,11 @@ def retrieve(space_id: str, query: str, top_k: int = 5) -> list[dict]:
 def _citation_label(rec: dict) -> str:
     doc = rec.get("document", "document")
     page = rec.get("page")
-    return f"{doc}, p.{page}" if page else doc
+    section = rec.get("section_title")
+    label = f"{doc}, p.{page}" if page else doc
+    if section:
+        label = f"{label} › {section}"
+    return label
 
 
 def build_context(hits: list[dict]) -> tuple[str, list[dict]]:
@@ -61,6 +65,9 @@ def build_context(hits: list[dict]) -> tuple[str, list[dict]]:
                 "chunk_id": rec.get("chunk_id"),
                 "document": rec.get("document"),
                 "page": rec.get("page"),
+                "section_title": rec.get("section_title"),
+                "heading_path": rec.get("heading_path", []),
+                "level": rec.get("level"),
                 "score": round(rec.get("score", 0.0), 4),
             }
         )

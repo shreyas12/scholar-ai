@@ -24,20 +24,25 @@ def _make_doc(space_id: str, doc_id: str, text: str):
 
 
 CHUNK_FIELDS = {
-    "chunk_id", "space", "doc_id", "document", "chunk_number", "total_chunks",
-    "page", "prev_chunk_id", "next_chunk_id", "text", "created_at",
+    "chunk_id", "space", "doc_id", "document", "level", "chunk_number",
+    "total_chunks", "page", "heading_path", "section_title", "prev_chunk_id",
+    "next_chunk_id", "quality", "keywords", "text", "created_at",
 }
 
 
 def test_pipeline_produces_chunk_records(env):
     path = _make_doc("ml", "ann", "HNSW graph search " * 500)
     chunks, log = pipeline.run_document("ml", "ann", "ann.txt", ".txt", "abc123", path)
-    assert len(chunks) >= 2
-    assert chunks[0]["chunk_id"] == "ann:0"
+    assert len(chunks) >= 3  # at least one chunk per level
+    assert chunks[0]["chunk_id"].startswith("ann:")
     assert chunks[0]["document"] == "ann.txt"
     assert CHUNK_FIELDS <= set(chunks[0])
+    # multi-level: all three representations present
+    assert {c["level"] for c in chunks} == {"large", "medium", "small"}
     # stage log records every stage
-    assert {e["stage"] for e in log if "stage" in e} == {"extract", "clean", "chunk"}
+    assert {e["stage"] for e in log if "stage" in e} == {
+        "extract", "clean", "section", "chunk", "enrich"
+    }
 
 
 def test_stage_cache_hit_on_reingest(env):

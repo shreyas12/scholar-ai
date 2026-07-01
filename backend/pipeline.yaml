@@ -4,10 +4,19 @@
 # exist). Stage order is the order below.
 
 stages:
-  extract:
+  extract:            # format -> structured blocks (headings/paragraphs/lists)
     enabled: true
-  clean:
+  clean:              # strip repeated headers/footers, page numbers, whitespace
     enabled: true
-  chunk:
+  section:            # group blocks into sections under their heading path
     enabled: true
-    chunk_words: 220
+  chunk:              # adaptive + multi-level sliding-window chunking
+    enabled: true
+    adaptive: true    # pick base size from detected document type
+    overlap: 0.2      # sliding-window overlap fraction (0.15–0.25)
+    levels:           # multi-level representations (word targets)
+      large: 350
+      medium: 180
+      small: 80
+  enrich:             # final chunk records: metadata, quality score, keywords
+    enabled: true
