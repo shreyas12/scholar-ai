@@ -8,12 +8,34 @@ Epic 4B) will later slot in; for now it's a clean single-query retrieve.
 
 from __future__ import annotations
 
+from typing import Protocol
+
 from . import vectorstore
+
+
+class Retriever(Protocol):
+    """Retrieval strategy interface (SA-051, the Stage-11 hook).
+
+    Alternative strategies (BM25, hybrid, reranked, multi-query) implement this
+    and can be swapped in without touching callers or the ingestion pipeline.
+    """
+
+    def retrieve(self, space_id: str, query: str, top_k: int) -> list[dict]: ...
+
+
+class DenseRetriever:
+    """Default strategy: dense vector search over the space FAISS index."""
+
+    def retrieve(self, space_id: str, query: str, top_k: int) -> list[dict]:
+        return vectorstore.search(space_id, query, top_k=top_k)
+
+
+_default_retriever: Retriever = DenseRetriever()
 
 
 def retrieve(space_id: str, query: str, top_k: int = 5) -> list[dict]:
     """Top-k chunk records for the query (each carries a ``score``)."""
-    return vectorstore.search(space_id, query, top_k=top_k)
+    return _default_retriever.retrieve(space_id, query, top_k)
 
 
 def _citation_label(rec: dict) -> str:

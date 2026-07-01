@@ -15,9 +15,10 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from .. import storage
-from ..config import get_settings
+from ..knowledge import pipeline
+from ..knowledge.processors import UnsupportedFormat, supported_extensions
 from ..models import Document
-from . import chunking, extraction, vectorstore
+from . import vectorstore
 from .spaces import SpaceNotFound, get_space
 
 
@@ -69,33 +70,11 @@ def list_documents(space_id: str) -> list[Document]:
     return out
 
 
-def _build_chunks(space_id: str, doc_id: str, name: str, path: Path) -> int:
-    """Extract + chunk a document and persist its chunks.json. Returns count."""
-    overlap = get_settings().chunk_overlap
-    segments = extraction.extract(path)
-    raw_chunks = chunking.chunk_segments(segments, overlap=overlap)
-
-    total = len(raw_chunks)
-    records = []
-    for i, ch in enumerate(raw_chunks):
-        chunk_id = f"{doc_id}:{i}"
-        records.append(
-            {
-                "chunk_id": chunk_id,
-                "space": space_id,
-                "doc_id": doc_id,
-                "document": name,
-                "chunk_number": i,
-                "total_chunks": total,
-                "page": ch.get("page"),
-                "prev_chunk_id": f"{doc_id}:{i - 1}" if i > 0 else None,
-                "next_chunk_id": f"{doc_id}:{i + 1}" if i < total - 1 else None,
-                "text": ch["text"],
-                "created_at": _now(),
-            }
-        )
-    storage.write_json(_doc_dir(space_id, doc_id) / "chunks.json", records)
-    return total
+def _build_chunks(space_id: str, doc_id: str, name: str, ext: str, checksum: str, path: Path) -> int:
+    """Run the Knowledge Processing Pipeline and persist chunks.json. Returns count."""
+    chunks, _log = pipeline.run_document(space_id, doc_id, name, ext, checksum, path)
+    storage.write_json(_doc_dir(space_id, doc_id) / "chunks.json", chunks)
+    return len(chunks)
 
 
 def save_and_ingest(space_id: str, filename: str, content: bytes) -> Document:
@@ -103,8 +82,8 @@ def save_and_ingest(space_id: str, filename: str, content: bytes) -> Document:
     get_space(space_id)  # raises SpaceNotFound
 
     ext = Path(filename).suffix.lower()
-    if ext not in extraction.SUPPORTED_EXTENSIONS:
-        raise extraction.UnsupportedFormat(f"Unsupported file type: {ext}")
+    if ext not in supported_extensions():
+        raise UnsupportedFormat(f"Unsupported file type: {ext}")
 
     doc_id = _doc_id_for(space_id, filename)
     checksum = hashlib.sha256(content).hexdigest()
@@ -131,7 +110,7 @@ def save_and_ingest(space_id: str, filename: str, content: bytes) -> Document:
     storage.write_json(_meta_path(space_id, doc_id), meta)
 
     try:
-        count = _build_chunks(space_id, doc_id, filename, original)
+        count = _build_chunks(space_id, doc_id, filename, ext, checksum, original)
         vectorstore.rebuild_index(space_id)  # SA-024: auto rebuild
         meta.update(chunk_count=count, status="ready")
     except Exception:

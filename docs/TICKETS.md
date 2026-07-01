@@ -84,8 +84,8 @@ representation, not just an index.*
 - [ ] **SA-047** [BE] `S` Stage 8 — embeddings over final chunks (bge-small).
 - [ ] **SA-048** [BE] `S` Stage 9 — parent–child relationships (doc→section→chunk) persisted.
 - [ ] **SA-049** [BE] `M` Stage 10 — neighbor expansion at retrieval (include prev/next chunk).
-- [ ] **SA-050** [BE] `S` Pipeline orchestrator: linear, resumable, per-stage logging + "fast ingest" mode (skip 6/7).
-- [ ] **SA-051** [BE] `S` Retrieval abstraction (Stage 11 hook) so BM25/rerank/hybrid can drop in later. Interface only.
+- [x] **SA-050** [BE] `S` Pipeline orchestrator: linear, resumable, per-stage logging + "fast ingest" mode (skip 6/7). *(Slice A)*
+- [x] **SA-051** [BE] `S` Retrieval abstraction (Stage 11 hook) so BM25/rerank/hybrid can drop in later. Interface only. *(Slice A)*
 
 ### Production-grade enhancements (§5b) — all toggleable
 
@@ -180,10 +180,10 @@ graph over the (now richer) advanced chunks.*
 *Conventions adopted early (prompt versioning is SA-009); the rest built alongside
 the pipeline. Cheap early, expensive to retrofit.*
 
-- [ ] **SA-130** [BE] `M` Stage-level pipeline cache: each stage caches output keyed by (input hash + stage version + config); editing a doc re-runs only downstream stages.
-- [ ] **SA-131** [BE] `M` Configurable `pipeline.yaml`: orchestrator (SA-050) reads declared stages; toggle extraction/cleaning/chunking/concept/summary/embedding.
-- [ ] **SA-132** [BE] `M` Plugin `DocumentProcessor` interface with register-by-format; PDF/DOCX/MD/TXT ship; Arxiv/YouTube/HTML/GitHub drop in with no core changes.
-- [ ] **SA-133** [BE] `S` Observability: per-stage + per-retrieval timing/counts → structured logs + a per-run JSON metrics record.
+- [x] **SA-130** [BE] `M` Stage-level pipeline cache: each stage caches output keyed by (input hash + stage version + config); editing a doc re-runs only downstream stages. *(Slice A)*
+- [x] **SA-131** [BE] `M` Configurable `pipeline.yaml`: orchestrator (SA-050) reads declared stages; toggle extraction/cleaning/chunking/concept/summary/embedding. *(Slice A)*
+- [x] **SA-132** [BE] `M` Plugin `DocumentProcessor` interface with register-by-format; PDF/DOCX/MD/TXT ship; Arxiv/YouTube/HTML/GitHub drop in with no core changes. *(Slice A)*
+- [~] **SA-133** [BE] `S` Observability: per-stage + per-retrieval timing/counts → structured logs + a per-run JSON metrics record. *(Slice A: per-stage timing/size/cache-hit in `stage_log` + logs; per-run JSON metrics file still TODO.)*
 
 ---
 

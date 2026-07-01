@@ -1,0 +1,13 @@
+# Knowledge Processing Pipeline configuration (SA-131).
+# Declares which stages run and their parameters. Toggle a stage's `enabled` to
+# turn it off (e.g. "fast ingest" = disable the expensive LLM stages once they
+# exist). Stage order is the order below.
+
+stages:
+  extract:
+    enabled: true
+  clean:
+    enabled: true
+  chunk:
+    enabled: true
+    chunk_words: 220

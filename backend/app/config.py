@@ -45,7 +45,12 @@ class Settings(BaseSettings):
         default_factory=lambda: Path(__file__).resolve().parent.parent / "prompts"
     )
 
-    @field_validator("data_dir", "prompts_dir", mode="before")
+    # Knowledge-pipeline stage config (SA-131). Defaults to backend/pipeline.yaml.
+    pipeline_config: Path = Field(
+        default_factory=lambda: Path(__file__).resolve().parent.parent / "pipeline.yaml"
+    )
+
+    @field_validator("data_dir", "prompts_dir", "pipeline_config", mode="before")
     @classmethod
     def _expand(cls, v: object) -> object:
         if isinstance(v, str) and v:
