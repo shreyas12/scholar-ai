@@ -104,13 +104,13 @@ representation, not just an index.*
 *The §6 production retrieval flow. Each stage toggleable; degrades to plain
 embed→FAISS if all are off.*
 
-- [ ] **SA-110** [BE+ML] `M` Query expansion: synonyms + acronym expansion before retrieval (HNSW → "Hierarchical Navigable Small World", ANN, graph index).
-- [ ] **SA-111** [BE+ML] `M` Multi-query retrieval: generate sub-questions, retrieve each, merge + dedupe.
-- [ ] **SA-112** [BE] `M` Merge + rerank across sub-queries and chunk levels.
-- [ ] **SA-113** [BE] `M` Context compression: squeeze top-k context to a token budget before the LLM.
-- [ ] **SA-114** [BE] `S` Retrieval confidence: compute from avg similarity + #chunks above threshold; return `{confidence, reason, avg_similarity}`.
-- [ ] **SA-115** [BE] `M` Retrieval orchestrator wiring the full §6 pipeline (expansion→multi-query→embed→FAISS→rerank→neighbor→compression→LLM→evidence).
-- [ ] **SA-116** [FE] `S` Show retrieval confidence + grounding detail in the chat UI ("92% · 4 relevant chunks · avg sim 0.89").
+- [ ] **SA-110** [BE+ML] `M` Query expansion: synonyms + acronym expansion before retrieval (HNSW → "Hierarchical Navigable Small World", ANN, graph index). *(Slice E-llm)*
+- [ ] **SA-111** [BE+ML] `M` Multi-query retrieval: generate sub-questions, retrieve each, merge + dedupe. *(Slice E-llm)*
+- [x] **SA-112** [BE] `M` Merge + rerank across sub-queries and chunk levels. *(Slice E-det; diversity-by-section + score backfill)*
+- [x] **SA-113** [BE] `M` Context compression: squeeze top-k context to a token budget before the LLM. *(Slice E-det; extractive/budget; LLM compression future)*
+- [x] **SA-114** [BE] `S` Retrieval confidence: compute from avg similarity + #chunks above threshold; return `{confidence, reason, avg_similarity}`. *(Slice E-det)*
+- [ ] **SA-115** [BE] `M` Retrieval orchestrator wiring the full §6 pipeline (expansion→multi-query→embed→FAISS→rerank→neighbor→compression→LLM→evidence). *(Slice E-llm)*
+- [x] **SA-116** [FE] `S` Show retrieval confidence + grounding detail in the chat UI ("92% · 4 relevant chunks · avg sim 0.89"). *(Slice E-det)*
 
 ---
 

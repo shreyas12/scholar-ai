@@ -39,6 +39,10 @@ class Settings(BaseSettings):
     # Neighbor expansion (SA-049): include N prev/next chunks around each hit for
     # context. 0 disables.
     retrieval_neighbors: int = 1
+    # Over-fetch factor before rerank/dedup-by-section (SA-112).
+    retrieval_fetch_multiplier: int = 4
+    # Context compression budget in characters before the LLM (SA-113).
+    max_context_chars: int = 6000
 
     # --- API ---
     cors_origins: list[str] = ["http://localhost:5173", "http://127.0.0.1:5173"]

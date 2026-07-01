@@ -1,4 +1,4 @@
-import { AlertTriangle, FileText, Loader2, Send } from "lucide-react";
+import { AlertTriangle, FileText, Gauge, Loader2, Send } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -7,9 +7,32 @@ import {
   getChatHistory,
   streamChat,
   type ChatMessage,
+  type Confidence,
   type Source,
 } from "@/lib/api";
 import { cn } from "@/lib/utils";
+
+function ConfidenceBadge({ c }: { c: Confidence }) {
+  const tone =
+    c.confidence >= 70
+      ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+      : c.confidence >= 40
+        ? "border-amber-200 bg-amber-50 text-amber-700"
+        : "border-red-200 bg-red-50 text-red-700";
+  return (
+    <div
+      className={cn(
+        "mt-2 inline-flex items-center gap-1.5 rounded-md border px-2 py-0.5 text-xs",
+        tone
+      )}
+      title={c.reason}
+    >
+      <Gauge className="h-3 w-3" />
+      {c.confidence}% grounded · {c.relevant_chunks} relevant · avg sim{" "}
+      {c.avg_similarity.toFixed(2)}
+    </div>
+  );
+}
 
 function SourceChips({ sources }: { sources: Source[] }) {
   if (!sources?.length) return null;
@@ -41,6 +64,7 @@ function Bubble({ msg }: { msg: ChatMessage }) {
         )}
       >
         <p className="whitespace-pre-wrap">{msg.content || "…"}</p>
+        {!isUser && msg.confidence && <ConfidenceBadge c={msg.confidence} />}
         {!isUser && msg.sources && <SourceChips sources={msg.sources} />}
       </div>
     </div>
@@ -84,6 +108,7 @@ export function ChatTab({ spaceId }: { spaceId: string }) {
 
     await streamChat(spaceId, question, {
       onSources: (sources) => patchAssistant((m) => ({ ...m, sources })),
+      onConfidence: (confidence) => patchAssistant((m) => ({ ...m, confidence })),
       onToken: (text) => patchAssistant((m) => ({ ...m, content: m.content + text })),
       onError: (message) => setError(message),
       onDone: () => {},

@@ -10,7 +10,11 @@ from __future__ import annotations
 
 from typing import Protocol
 
+from ..config import get_settings
 from . import vectorstore
+
+# Cosine similarity above which a retrieved chunk counts as "relevant" (SA-114).
+RELEVANT_THRESHOLD = 0.5
 
 
 class Retriever(Protocol):
@@ -33,9 +37,81 @@ class DenseRetriever:
 _default_retriever: Retriever = DenseRetriever()
 
 
+def rerank(hits: list[dict], top_k: int) -> list[dict]:
+    """Merge/rerank across levels (SA-112).
+
+    Retrieval over multiple chunk levels tends to surface several chunks from the
+    same section. Prefer *diversity*: take the best chunk per section first, then
+    backfill by score if fewer than ``top_k`` distinct sections were found.
+    """
+    ordered = sorted(hits, key=lambda h: h.get("score", 0.0), reverse=True)
+    out: list[dict] = []
+    seen: set = set()
+    for h in ordered:
+        key = h.get("section_id") or h.get("chunk_id")
+        if key not in seen:
+            seen.add(key)
+            out.append(h)
+        if len(out) >= top_k:
+            return out
+    for h in ordered:  # backfill to reach top_k
+        if h not in out:
+            out.append(h)
+            if len(out) >= top_k:
+                break
+    return out
+
+
 def retrieve(space_id: str, query: str, top_k: int = 5) -> list[dict]:
-    """Top-k chunk records for the query (each carries a ``score``)."""
-    return _default_retriever.retrieve(space_id, query, top_k)
+    """Top-k chunk records for the query (over-fetch → rerank by section)."""
+    fetch = max(top_k, top_k * get_settings().retrieval_fetch_multiplier)
+    raw = _default_retriever.retrieve(space_id, query, fetch)
+    return rerank(raw, top_k)
+
+
+def retrieval_confidence(hits: list[dict]) -> dict:
+    """How well-grounded the answer is (SA-114): confidence %, reason, stats."""
+    if not hits:
+        return {
+            "confidence": 0,
+            "reason": "no relevant material found in this space",
+            "avg_similarity": 0.0,
+            "relevant_chunks": 0,
+        }
+    scores = [h.get("score", 0.0) for h in hits]
+    top = scores[:3]
+    avg = sum(top) / len(top)
+    relevant = sum(1 for s in scores if s >= RELEVANT_THRESHOLD)
+    # map avg cosine ~[0.3, 0.85] onto 0–100
+    confidence = round(max(0.0, min(1.0, (avg - 0.3) / (0.85 - 0.3))) * 100)
+    return {
+        "confidence": confidence,
+        "reason": f"retrieved {relevant} highly-relevant chunk(s); avg similarity {round(avg, 2)}",
+        "avg_similarity": round(avg, 4),
+        "relevant_chunks": relevant,
+    }
+
+
+def compress_context(hits: list[dict], budget_chars: int) -> list[dict]:
+    """Squeeze context to a character budget before the LLM (SA-113).
+
+    Deterministic extractive compression: include highest-priority hits until the
+    budget is hit, truncating the final block. (LLM-based contextual compression
+    is a future enhancement.)
+    """
+    out: list[dict] = []
+    used = 0
+    for h in hits:
+        text = h["text"]
+        if used + len(text) <= budget_chars:
+            out.append(h)
+            used += len(text)
+        else:
+            remaining = budget_chars - used
+            if remaining > 200:
+                out.append({**h, "text": text[:remaining].rstrip() + " …"})
+            break
+    return out
 
 
 def expand_neighbors(space_id: str, hits: list[dict], window: int = 1) -> list[dict]:

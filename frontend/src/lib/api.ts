@@ -116,10 +116,18 @@ export interface Source {
   score: number;
 }
 
+export interface Confidence {
+  confidence: number;
+  reason: string;
+  avg_similarity: number;
+  relevant_chunks: number;
+}
+
 export interface ChatMessage {
   role: "user" | "assistant";
   content: string;
   sources?: Source[];
+  confidence?: Confidence;
   prompt_version?: string;
   ts?: string;
 }
@@ -130,6 +138,7 @@ export async function getChatHistory(spaceId: string): Promise<ChatMessage[]> {
 
 export interface StreamHandlers {
   onSources?: (sources: Source[]) => void;
+  onConfidence?: (confidence: Confidence) => void;
   onToken?: (text: string) => void;
   onError?: (message: string) => void;
   onDone?: () => void;
@@ -196,6 +205,7 @@ export async function streamChat(
       if (!line.trim()) continue;
       const event = JSON.parse(line);
       if (event.type === "sources") handlers.onSources?.(event.sources);
+      else if (event.type === "confidence") handlers.onConfidence?.(event);
       else if (event.type === "token") handlers.onToken?.(event.text);
       else if (event.type === "error") handlers.onError?.(event.message);
       else if (event.type === "done") handlers.onDone?.();
