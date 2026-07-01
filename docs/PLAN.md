@@ -147,19 +147,71 @@ Implemented as a linear, resumable pipeline. Each stage is a pure-ish function
 > part. Make them batched, cached by chunk checksum, and toggleable (a "fast
 > ingest" mode can skip them and backfill later).
 
+### 5b — Production-grade ingestion enhancements
+
+Layered on top of the 11 canonical stages to make retrieval quality closer to a
+real production system. All are **optional/toggleable** — the base pipeline works
+without them.
+
+- **Multi-level chunking** — emit three representations per section: large
+  (~1200 tok), medium (~600 tok), small (~250 tok). Each chunk carries a `level`.
+  Small chunks answer pin-point questions ("Explain HNSW"); large chunks answer
+  synthesis questions ("evolution of ANN algorithms"). This is hierarchical
+  retrieval — index all levels, let the retriever pick.
+- **Semantic boundary detection** — instead of cutting at a fixed token count,
+  embed paragraphs and cut where inter-paragraph similarity *drops*, so we never
+  split in the middle of a coherent discussion. Falls back to fixed size.
+- **Adaptive chunk size** — pick a base size by document type: code → small,
+  research paper → medium, textbook → large. Detected heuristically.
+- **Keyword extraction** — per chunk, store keywords (TF-IDF or KeyBERT) in
+  metadata. Makes future hybrid (BM25 + dense) search trivial.
+- **Named-entity extraction** — per chunk, pull algorithms, libraries, frameworks,
+  companies, datasets, metrics, authors (e.g. HNSW, FAISS, NDCG, OpenAI). Sharper
+  filtering and search.
+- **Chunk quality scoring (0–100)** — score on length, structure, semantic
+  cohesion, duplicate ratio, OCR quality; auto-rebuild low-quality chunks.
+- **Duplicate detection** — before embedding, if a chunk's similarity to an
+  existing one is > 0.97, reuse the existing chunk instead of re-indexing. Two
+  overlapping PDFs shouldn't double the index.
+
 **Change detection:** on re-upload, compare `sha256`. If changed → re-run the
 pipeline for that document and rebuild the space index.
 
 ---
 
-## 6. RAG chat flow
+## 6. RAG chat flow (production retrieval pipeline)
 
-1. Embed the user question (bge-small).
-2. FAISS top-k over the space index.
-3. Neighbor expansion (Stage 10) → assemble context with citations.
-4. Prompt Ollama: *answer only from provided context; cite doc + page.*
-5. Stream answer to UI with source chips (doc name, page, heading path).
-6. Chat turns can *optionally* be scored as recall/application evidence.
+Rather than `question → embed → FAISS → answer`, the retriever is a staged
+pipeline where each stage is optional/toggleable:
+
+```
+Question
+  ↓  Query expansion        (synonyms, acronym expansion: HNSW → "Hierarchical
+  ↓                          Navigable Small World", "ANN", "graph index")
+  ↓  Multi-query            (generate sub-questions, retrieve each)
+  ↓  Embedding              (bge-small)
+  ↓  FAISS retrieval        (top-k over the space index, across chunk levels)
+  ↓  Merge + rerank         (dedupe across sub-queries, order by relevance)
+  ↓  Neighbor expansion     (Stage 10: pull prev/next chunk)
+  ↓  Context compression    (squeeze top-k to a token budget before the LLM)
+  ↓  LLM (Ollama)           (answer only from context; cite doc + page)
+  ↓  Grounded answer        (+ retrieval confidence, see below)
+  ↓  Evidence collection    (emit an interaction event — see §7b)
+```
+
+- **Query expansion** improves recall for terse queries.
+- **Multi-query retrieval**: "Explain Vector Search" → {what is vector search,
+  how embeddings work, ANN algorithms, vector databases} → retrieve all, merge,
+  rerank. Better coverage than a single query.
+- **Context compression** keeps large learning spaces within the model's window.
+- **Retrieval confidence** — surface *how well-grounded* the answer is, not just
+  the answer:
+  > Confidence 92% · retrieved 4 highly-relevant chunks · avg similarity 0.89
+
+  Computed from average top-k similarity + count of chunks above a threshold.
+  Shown in the UI so users know when to trust the answer.
+- **Evidence collection** — every chat turn is emitted as an event and can be
+  scored as recall/application evidence (see §7b), never silently mutating mastery.
 
 ---
 
@@ -193,21 +245,71 @@ Mastered / Learning / Weak / Unknown.
 
 ---
 
+## 7b. Event-driven mastery
+
+Mastery is **never mutated directly**. Every interaction is appended as an
+immutable **event**; mastery scores are a *projection* computed over the event log.
+
+```
+Question asked
+  ↓  Retrieved concepts        (which concepts the retrieved chunks are tagged with)
+  ↓  User answer
+  ↓  Evaluation                (LLM-judge / deterministic grade + confidence)
+  ↓  Event appended            (append-only log in progress.json / events.json)
+  ↓  Concept mastery updated   (recompute projection for affected concepts)
+```
+
+Why event-sourced:
+
+- **Auditable** — you can always show *why* a concept is at 82% (the evidence).
+- **Recomputable** — tune the mastery formula and replay events; no lost history.
+- **Retention-aware** — decay is a function of event timestamps, computed on read.
+
+### Rich per-concept record (dashboard-facing)
+
+Store more than a single number so the dashboard is genuinely informative:
+
+```json
+{
+  "concept_id": "hnsw",
+  "label": "HNSW",
+  "mastery": 82,
+  "evidence_count": 17,
+  "last_correct": "2026-06-29T...",
+  "misconceptions": 1,
+  "avg_confidence": 4.2,
+  "avg_retrieval_confidence": 0.91,
+  "coverage": true,
+  "retention_estimate": 0.75,
+  "next_review": "2026-07-08T..."
+}
+```
+
+---
+
 ## 8. Phasing (ship in thin vertical slices)
 
 - **Phase 0 — Skeleton:** repo, backend/frontend scaffold, health check, storage
   layer, Ollama connectivity. *(Prove the plumbing.)*
 - **Phase 1 — Spaces + Documents + basic chat:** the core loop with *simple*
-  fixed chunking first, then swap in the real pipeline. Get end-to-end value.
-- **Phase 2 — Advanced ingestion:** stages 1–10 properly.
-- **Phase 3 — Concepts + graph:** extraction, concept graph, coverage.
-- **Phase 4 — Assessment + mastery:** quiz/recall/application, confidence,
-  scoring, retention.
-- **Phase 5 — Dashboard:** concept-level mastery view, weak-concept surfacing.
-- **Phase 6 — Polish:** offline check, one-command setup, docs.
+  fixed chunking first. Get end-to-end value.
+- **Phase 2 — Basic concept extraction:** lightweight LLM concept extraction over
+  the simple chunks, tag retrieved chunks with concepts, start collecting evidence
+  and coverage. *(Moved ahead of advanced ingestion — see rationale below.)*
+- **Phase 3 — Advanced ingestion + retrieval:** the 11 stages, the §5b
+  enhancements, and the §6 production retrieval pipeline.
+- **Phase 4 — Concept graph:** canonicalization/dedup + prerequisite edges.
+- **Phase 5 — Assessment + mastery:** event-driven evidence, quiz/recall/
+  application, confidence, scoring, retention.
+- **Phase 6 — Dashboard:** concept-level mastery view, weak-concept surfacing.
+- **Phase 7 — Polish:** offline check, one-command setup, docs.
 
-Rationale: Phase 1 delivers a usable "chat with my notes" app quickly; the
-mastery differentiator (Phases 3–5) is layered on the same evidence stream.
+**Rationale for moving concept extraction earlier:** concept extraction unlocks
+the product's unique value — the moment you can tag retrieved chunks with concepts
+you can start collecting evidence and building mastery scores, *while* the chunking
+and retrieval pipeline keeps improving in later phases. It also de-risks the
+differentiator early instead of gating it behind the whole ingestion rebuild.
+Chunking quality and concept quality then improve independently.
 
 ---
 

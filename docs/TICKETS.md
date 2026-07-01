@@ -51,7 +51,18 @@ Legend: **[BE]** backend · **[FE]** frontend · **[INFRA]** tooling/setup ·
 
 ---
 
-## EPIC 4 — Advanced ingestion pipeline (Phase 2)
+## EPIC 3B — Basic concept extraction (Phase 2) ⭐ moved early
+
+*Runs on the simple chunks from Epic 2 — no graph, no advanced ingestion yet.
+Purpose: unlock the mastery differentiator ASAP and start collecting evidence.*
+
+- [ ] **SA-035** [BE+ML] `M` Lightweight LLM concept extraction over simple chunks → space concept set (`concepts.json`, flat list, no edges yet).
+- [ ] **SA-036** [BE] `S` Tag retrieved chunks with their concepts during chat; expose "concepts touched" per turn.
+- [ ] **SA-037** [BE] `S` Basic coverage: mark concepts encountered, compute space coverage %; simple concept list API.
+
+---
+
+## EPIC 4 — Advanced ingestion pipeline (Phase 3)
 
 *Replaces SA-021 simple ingest. Each stage independently testable.*
 
@@ -68,19 +79,47 @@ Legend: **[BE]** backend · **[FE]** frontend · **[INFRA]** tooling/setup ·
 - [ ] **SA-050** [BE] `S` Pipeline orchestrator: linear, resumable, per-stage logging + "fast ingest" mode (skip 6/7).
 - [ ] **SA-051** [BE] `S` Retrieval abstraction (Stage 11 hook) so BM25/rerank/hybrid can drop in later. Interface only.
 
+### Production-grade enhancements (§5b) — all toggleable
+
+- [ ] **SA-052** [BE] `M` Multi-level chunking: emit large (~1200) / medium (~600) / small (~250 tok) reps with `level` metadata; index all levels.
+- [ ] **SA-053** [BE+ML] `M` Semantic boundary detection: cut where inter-paragraph embedding similarity drops (fallback to fixed size).
+- [ ] **SA-054** [BE] `S` Adaptive chunk size by document type (code→small, paper→medium, textbook→large), heuristic detection.
+- [ ] **SA-055** [BE+ML] `S` Keyword extraction per chunk (TF-IDF or KeyBERT) → metadata (enables future hybrid search).
+- [ ] **SA-056** [BE+ML] `M` Named-entity extraction per chunk: algorithms, libraries, frameworks, companies, datasets, metrics, authors.
+- [ ] **SA-057** [BE] `M` Chunk quality score (0–100) from length/structure/cohesion/duplicate-ratio/OCR; auto-rebuild low-quality chunks.
+- [ ] **SA-058** [BE] `S` Duplicate detection: if embedding similarity > 0.97 to an existing chunk, reuse it instead of re-indexing.
+
 ---
 
-## EPIC 5 — Concepts & concept graph (Phase 3)
+## EPIC 4B — Advanced retrieval pipeline (Phase 3)
 
-- [ ] **SA-060** [BE+ML] `M` Aggregate chunk-level concepts → space concept set; canonicalize/dedup (normalize + fuzzy match).
+*The §6 production retrieval flow. Each stage toggleable; degrades to plain
+embed→FAISS if all are off.*
+
+- [ ] **SA-110** [BE+ML] `M` Query expansion: synonyms + acronym expansion before retrieval (HNSW → "Hierarchical Navigable Small World", ANN, graph index).
+- [ ] **SA-111** [BE+ML] `M` Multi-query retrieval: generate sub-questions, retrieve each, merge + dedupe.
+- [ ] **SA-112** [BE] `M` Merge + rerank across sub-queries and chunk levels.
+- [ ] **SA-113** [BE] `M` Context compression: squeeze top-k context to a token budget before the LLM.
+- [ ] **SA-114** [BE] `S` Retrieval confidence: compute from avg similarity + #chunks above threshold; return `{confidence, reason, avg_similarity}`.
+- [ ] **SA-115** [BE] `M` Retrieval orchestrator wiring the full §6 pipeline (expansion→multi-query→embed→FAISS→rerank→neighbor→compression→LLM→evidence).
+- [ ] **SA-116** [FE] `S` Show retrieval confidence + grounding detail in the chat UI ("92% · 4 relevant chunks · avg sim 0.89").
+
+---
+
+## EPIC 5 — Concept graph (Phase 4)
+
+*Builds on the basic concepts from Epic 3B — adds canonicalization + prerequisite
+graph over the (now richer) advanced chunks.*
+
+- [ ] **SA-060** [BE+ML] `M` Canonicalize/dedup concepts across chunks (normalize + fuzzy match) into a clean concept set.
 - [ ] **SA-061** [BE+ML] `M` Prerequisite edges: LLM pass to link concepts into a graph → `concepts.json`.
 - [ ] **SA-062** [BE] `S` Concepts API: list concepts, get graph, get source chunks per concept.
-- [ ] **SA-063** [BE] `S` Coverage signal: mark concept "encountered"; compute space coverage %.
+- [ ] **SA-063** [BE] `S` Refine coverage from graph (supersedes SA-037 basic coverage).
 - [ ] **SA-064** [FE] `S` (Optional MVP) simple concept list view with coverage badges. (Full graph viz is out of scope.)
 
 ---
 
-## EPIC 6 — Assessment & evidence (Phase 4)
+## EPIC 6 — Assessment & evidence (Phase 5, event-driven)
 
 - [ ] **SA-070** [BE+ML] `M` Question generator per concept: recall (explain), recognition (MCQ/T-F/matching), application (scenario).
 - [ ] **SA-071** [BE+ML] `M` LLM-judge grader for free-text (recall/application) with explicit rubric in one file.
@@ -91,14 +130,20 @@ Legend: **[BE]** backend · **[FE]** frontend · **[INFRA]** tooling/setup ·
 - [ ] **SA-076** [FE] `M` Quiz UI: question card, answer input (free-text / MCQ), confidence slider, feedback + explanation.
 - [ ] **SA-077** [BE] `S` Chat-as-evidence hook: optionally grade a chat answer and record it against a concept.
 
+### Event-driven core (§7b)
+
+- [ ] **SA-078** [BE] `M` Event store: append-only interaction events (question → retrieved concepts → answer → evaluation) to `events.json`. Mastery never mutated directly.
+- [ ] **SA-079** [BE] `M` Mastery as a projection: recompute affected concepts from the event log (replayable when the formula changes).
+
 ---
 
-## EPIC 7 — Mastery scoring & retention (Phase 4)
+## EPIC 7 — Mastery scoring & retention (Phase 5)
 
 - [ ] **SA-080** [BE] `M` Mastery service: combine recall/recognition/application + confidence modifier → per-concept overall (isolated, unit-tested).
 - [ ] **SA-081** [BE] `S` Retention model: last_reviewed, decay-based retention estimate, next_review date.
 - [ ] **SA-082** [BE] `S` Bucketing: Mastered / Learning / Weak / Unknown thresholds.
 - [ ] **SA-083** [BE] `S` Space-level rollup: overall mastery %, counts per bucket.
+- [ ] **SA-084** [BE] `S` Rich per-concept record (§7b): mastery, evidence_count, last_correct, misconceptions, avg_confidence, avg_retrieval_confidence.
 
 ---
 
@@ -108,6 +153,7 @@ Legend: **[BE]** backend · **[FE]** frontend · **[INFRA]** tooling/setup ·
 - [ ] **SA-091** [FE] `S` Weak-concept surfacing: "next recommended study targets" list linking into quiz.
 - [ ] **SA-092** [FE] `S` Concept detail: coverage/recall/recognition/application/confidence/retention breakdown (the HNSW example card).
 - [ ] **SA-093** [FE] `S` Language check — copy says "mastered X of Y concepts", never "% of documents read".
+- [ ] **SA-094** [FE] `S` Rich concept card (SA-084): evidence count, last correct, misconceptions, avg confidence, avg retrieval confidence.
 
 ---
 
@@ -126,13 +172,16 @@ Legend: **[BE]** backend · **[FE]** frontend · **[INFRA]** tooling/setup ·
 Video/YouTube/website/paper ingestion · knowledge-graph visualization ·
 adaptive quizzes · interview mode · spaced repetition scheduler ·
 personalized roadmap · multi-model (OpenAI/Anthropic/OpenRouter) · shared spaces ·
-BM25/hybrid/rerank retrieval (interface stubbed only).
+BM25 keyword index + cross-encoder reranker (dense-side query expansion/multi-query
+*are* in scope; full hybrid/BM25 is stubbed via the Stage-11 interface).
 
 ---
 
 ## Suggested build order (critical path)
 
 `SA-001→008` (skeleton) → `SA-010,012` (spaces) → `SA-020,021,022` (upload+simple
-ingest) → `SA-030,031,033` (chat) → **usable app** → `SA-040…050` (real pipeline)
-→ `SA-060…063` (concepts) → `SA-070…077` (assessment) → `SA-080…083` (mastery) →
-`SA-090…093` (dashboard) → `SA-100…104` (polish).
+ingest) → `SA-030,031,033` (chat) → **usable app** → `SA-035…037` (basic concepts —
+differentiator online early) → `SA-040…058` (advanced ingestion) →
+`SA-110…116` (advanced retrieval) → `SA-060…064` (concept graph) →
+`SA-070…079` (assessment + event store) → `SA-080…084` (mastery) →
+`SA-090…094` (dashboard) → `SA-100…104` (polish).
