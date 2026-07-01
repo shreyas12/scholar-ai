@@ -1,10 +1,12 @@
 # ScholarAI
 
-A **local-first AI study companion** that turns your personal notes into an intelligent tutor — and measures your actual *mastery* of the material instead of tracking document completion.
+A **local-first platform for evidence-based learning** that turns your personal notes into an intelligent tutor — and measures your actual *mastery* of the material instead of tracking document completion.
 
-> Create a learning space → Add documents → Chat with your notes → Measure your understanding.
+> Create a learning space → Add documents → Chat with your notes → Measure your understanding → *Am I interview-ready?*
 
-No accounts. No cloud. No subscriptions. No API keys required for the default experience.
+Built on production-style RAG (a Knowledge Processing Pipeline + staged retrieval),
+a concept graph, and an event-driven mastery model. No accounts. No cloud. No
+subscriptions. No API keys required for the default experience.
 
 ## Status
 

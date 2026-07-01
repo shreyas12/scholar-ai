@@ -122,7 +122,13 @@ FAISS stores only vectors + row→chunk_id mapping.
 
 ---
 
-## 5. Ingestion pipeline (the 11 stages)
+## 5. Knowledge Processing Pipeline (the 11 stages)
+
+> Formerly "Advanced Ingestion." Renamed because it does far more than ingest
+> files — it parses, semantically chunks, extracts concepts, summarizes, enriches
+> metadata, scores quality, and embeds. It builds a **knowledge representation**,
+> not just an index. The code namespace is `knowledge/` (a.k.a. the Knowledge
+> Ingestion Engine).
 
 Implemented as a linear, resumable pipeline. Each stage is a pure-ish function
 `(input, meta) -> output` so stages are independently testable and swappable.
@@ -296,13 +302,21 @@ Store more than a single number so the dashboard is genuinely informative:
 - **Phase 2 — Basic concept extraction:** lightweight LLM concept extraction over
   the simple chunks, tag retrieved chunks with concepts, start collecting evidence
   and coverage. *(Moved ahead of advanced ingestion — see rationale below.)*
-- **Phase 3 — Advanced ingestion + retrieval:** the 11 stages, the §5b
+- **Phase 3 — Knowledge Processing Pipeline + retrieval:** the 11 stages, the §5b
   enhancements, and the §6 production retrieval pipeline.
 - **Phase 4 — Concept graph:** canonicalization/dedup + prerequisite edges.
 - **Phase 5 — Assessment + mastery:** event-driven evidence, quiz/recall/
   application, confidence, scoring, retention.
 - **Phase 6 — Dashboard:** concept-level mastery view, weak-concept surfacing.
 - **Phase 7 — Polish:** offline check, one-command setup, docs.
+
+**Cross-cutting (built alongside, not as a phase):** prompt versioning,
+stage-level pipeline cache, configurable `pipeline.yaml`, plugin document
+processors, and lightweight observability — see §10. These shape the code from
+day one, so we adopt the *conventions* early even where the full feature lands later.
+
+**Post-core, in priority order:** retrieval evaluation (§11) → Interview Readiness
+mode (§12, the flagship) → versioned spaces + model benchmarking (§13).
 
 **Rationale for moving concept extraction earlier:** concept extraction unlocks
 the product's unique value — the moment you can tag retrieved chunks with concepts
@@ -323,3 +337,85 @@ Chunking quality and concept quality then improve independently.
 4. **LLM-judge reliability** — free-text grading variance; may need few-shot rubric.
 5. **Ingestion cost** — per-chunk LLM calls on `qwen3:8b` locally can be slow for
    big PDFs; need batching + a fast-ingest fallback.
+
+---
+
+## 10. Platform infrastructure (cross-cutting)
+
+Foundational conventions adopted from day one — cheap to build in, expensive to
+retrofit. These are what make it read as a *platform*, not a script.
+
+- **Prompt versioning** — no hardcoded prompts. They live as files under
+  `prompts/` (`chat_v1.md`, `concept_extraction_v1.md`, `grading_v1.md`,
+  `summarization_v1.md`, `query_expansion_v1.md`). Every event/record stamps the
+  **prompt version** it used, so when grading changes you can explain why scores
+  moved. *(Adopt immediately — it's just a loader + a stamped field.)*
+- **Stage-level pipeline cache** — beyond the whole-document checksum, each stage
+  caches its own output keyed by (input hash + stage version + config). Editing a
+  document re-runs only concept extraction, not extraction/cleaning/chunking.
+  Turns a chunking tweak from "reprocess everything" into "reprocess one stage."
+- **Configurable pipeline (`pipeline.yaml`)** — stages are declared in config, not
+  wired in code. Users toggle extraction / cleaning / chunking / concept /
+  summary / embedding on or off. The orchestrator (SA-050) reads this file.
+- **Plugin document processors** — a `DocumentProcessor` interface with
+  register-by-format. PDF/DOCX/MD/TXT ship; Arxiv/YouTube/HTML/GitHub drop in
+  later with **no core changes**. This is how the roadmap ingestion sources land
+  cleanly.
+- **Observability** — every pipeline stage and retrieval step emits timing +
+  counts (extraction 4s → 280 chunks → embedding 12s → LLM 81s → indexed).
+  Persist a per-run metrics record. Lightweight now (structured logs + a JSON
+  metrics file); a dashboard later.
+
+## 11. Retrieval evaluation (MVP+)
+
+We evaluate the *learner* — but not the *retrieval system*. An optional
+`evaluation/` package closes that gap and is what production AI teams actually
+monitor.
+
+```
+Question → Retrieved chunks → Expected concepts →
+   Recall@K · Precision@K · MRR · NDCG · Coverage
+```
+
+Because chunks are already concept-tagged (Epic 3B), we can build a small
+gold set of (question → expected concepts) and answer:
+
+- Did semantic chunking improve NDCG?
+- Does multi-query actually raise Recall@5?
+- Did a chunking change *regress* retrieval?
+
+Runs offline as a CLI/report against a fixture set; not in the request path.
+
+## 12. Flagship: Interview Readiness Mode (post-core)
+
+The feature that makes ScholarAI *memorable*. It requires **no architectural
+change** — it's a new layer consuming the concept graph (§5/Epic 5) and the event
+store (§7b).
+
+Query: **"Can I pass an interview on Recommendation Systems?"** →
+
+1. Walk the concept graph for the topic + its prerequisites.
+2. Read mastery evidence per concept from the event store.
+3. Identify weak / missing prerequisite concepts.
+4. Generate an adaptive interview targeting the gaps.
+5. Score answers (LLM-judge) → emit events → update mastery.
+6. Report readiness:
+
+```
+Interview Readiness — Recommendation Systems      82%
+Strong:  ✓ Embeddings  ✓ HNSW  ✓ ANN
+Improve: ✗ Product Quantization  ✗ Counterfactual Eval  ✗ Online Learning
+```
+
+This is the narrative payoff: the concept graph + evidence store weren't
+academic — they enable a genuinely useful, differentiated feature.
+
+## 13. Further platform features (roadmap)
+
+- **Versioned learning spaces** — snapshot the space on each material change
+  ("v17: added Transformers.pdf → concepts updated → mastery recomputed"). Lets a
+  learner see how their knowledge evolved. Natural fit with the event-sourced
+  design; deferred for storage/complexity reasons.
+- **Model benchmarking** — run the same question through Qwen / Gemma / Mistral,
+  judge, and compare. Useful for research and for picking a default model. Builds
+  on the LLM-judge already in the mastery layer.

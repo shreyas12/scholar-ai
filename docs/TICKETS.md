@@ -18,6 +18,7 @@ Legend: **[BE]** backend · **[FE]** frontend · **[INFRA]** tooling/setup ·
 - [ ] **SA-006** [ML] `S` Embedding service: load `bge-small`, `embed(texts) -> vectors`, warm-up on startup.
 - [ ] **SA-007** [INFRA] `S` `scripts/dev.sh` (run backend + frontend), pyproject/requirements, frontend package.json.
 - [ ] **SA-008** [INFRA] `S` Config module + `.env.example` (data dir, ollama url, model, embed model, overlap %, top-k).
+- [ ] **SA-009** [BE] `S` **Prompt versioning convention (adopt now):** all prompts as files under `prompts/*_vN.md` + a loader; every LLM call records the prompt version it used. Cheap now, avoids "why did scores change?" later.
 
 ---
 
@@ -62,7 +63,10 @@ Purpose: unlock the mastery differentiator ASAP and start collecting evidence.*
 
 ---
 
-## EPIC 4 — Advanced ingestion pipeline (Phase 3)
+## EPIC 4 — Knowledge Processing Pipeline (Phase 3)
+
+*Formerly "Advanced Ingestion." Namespace `knowledge/`. Builds a knowledge
+representation, not just an index.*
 
 *Replaces SA-021 simple ingest. Each stage independently testable.*
 
@@ -167,21 +171,69 @@ graph over the (now richer) advanced chunks.*
 
 ---
 
+## EPIC P — Platform infrastructure (cross-cutting, §10)
+
+*Conventions adopted early (prompt versioning is SA-009); the rest built alongside
+the pipeline. Cheap early, expensive to retrofit.*
+
+- [ ] **SA-130** [BE] `M` Stage-level pipeline cache: each stage caches output keyed by (input hash + stage version + config); editing a doc re-runs only downstream stages.
+- [ ] **SA-131** [BE] `M` Configurable `pipeline.yaml`: orchestrator (SA-050) reads declared stages; toggle extraction/cleaning/chunking/concept/summary/embedding.
+- [ ] **SA-132** [BE] `M` Plugin `DocumentProcessor` interface with register-by-format; PDF/DOCX/MD/TXT ship; Arxiv/YouTube/HTML/GitHub drop in with no core changes.
+- [ ] **SA-133** [BE] `S` Observability: per-stage + per-retrieval timing/counts → structured logs + a per-run JSON metrics record.
+
+---
+
+## EPIC R — Retrieval evaluation (MVP+, §11)
+
+*Optional `evaluation/` package. Evaluates the retrieval system, not just the learner.*
+
+- [ ] **SA-140** [BE] `M` Gold set format: (question → expected concepts) fixtures per space; small seed set.
+- [ ] **SA-141** [BE] `M` Metrics: Recall@K, Precision@K, MRR, NDCG, concept coverage over retrieved chunks.
+- [ ] **SA-142** [BE] `S` Eval CLI/report: run against fixtures, compare configs (e.g. multi-query on/off, semantic vs fixed chunking) → regression detection.
+
+---
+
+## EPIC I — Interview Readiness Mode (flagship stretch, §12)
+
+*No architectural change — consumes the concept graph (Epic 5) + event store (SA-078).*
+
+- [ ] **SA-150** [BE] `M` Topic → prerequisite walk over the concept graph; pull mastery evidence per concept.
+- [ ] **SA-151** [BE] `M` Gap analysis: classify concepts strong / weak / missing for the topic.
+- [ ] **SA-152** [BE+ML] `M` Adaptive interview generator targeting the gaps (reuses SA-070 question gen).
+- [ ] **SA-153** [BE] `S` Score answers → emit events (SA-078) → update mastery; compute readiness %.
+- [ ] **SA-154** [FE] `M` Interview Readiness view: overall %, strong areas ✓, needs-improvement ✗, start-interview flow.
+
+---
+
+## EPIC RM — Further platform (roadmap, §13)
+
+- [ ] **SA-160** [BE] `L` Versioned learning spaces: snapshot on each material change; "how knowledge evolved" timeline. (Fits event-sourcing; deferred for storage/complexity.)
+- [ ] **SA-161** [BE+ML] `M` Model benchmarking: same question through Qwen/Gemma/Mistral → LLM-judge → compare; pick default model.
+
+---
+
 ## Explicitly OUT of scope (MVP)
 
 Video/YouTube/website/paper ingestion · knowledge-graph visualization ·
-adaptive quizzes · interview mode · spaced repetition scheduler ·
-personalized roadmap · multi-model (OpenAI/Anthropic/OpenRouter) · shared spaces ·
-BM25 keyword index + cross-encoder reranker (dense-side query expansion/multi-query
-*are* in scope; full hybrid/BM25 is stubbed via the Stage-11 interface).
+adaptive quizzes · spaced repetition scheduler · personalized roadmap ·
+multi-model (OpenAI/Anthropic/OpenRouter) · shared spaces · BM25 keyword index +
+cross-encoder reranker.
+
+*In scope but sequenced after the core:* retrieval evaluation (Epic R) ·
+Interview Readiness (Epic I) · versioned spaces + model benchmarking (Epic RM).
+Dense-side query expansion / multi-query *are* core (Epic 4B); full hybrid/BM25 is
+stubbed via the Stage-11 interface.
 
 ---
 
 ## Suggested build order (critical path)
 
-`SA-001→008` (skeleton) → `SA-010,012` (spaces) → `SA-020,021,022` (upload+simple
-ingest) → `SA-030,031,033` (chat) → **usable app** → `SA-035…037` (basic concepts —
-differentiator online early) → `SA-040…058` (advanced ingestion) →
+`SA-001→009` (skeleton + prompt-versioning convention) → `SA-010,012` (spaces) →
+`SA-020,021,022` (upload+simple ingest) → `SA-030,031,033` (chat) → **usable app**
+→ `SA-035…037` (basic concepts — differentiator online early) →
+`SA-040…058` (knowledge pipeline) + `SA-130…133` (platform infra, alongside) →
 `SA-110…116` (advanced retrieval) → `SA-060…064` (concept graph) →
 `SA-070…079` (assessment + event store) → `SA-080…084` (mastery) →
-`SA-090…094` (dashboard) → `SA-100…104` (polish).
+`SA-090…094` (dashboard) → `SA-100…104` (polish) →
+**then** `SA-140…142` (retrieval eval) → `SA-150…154` (Interview Readiness — flagship)
+→ `SA-160,161` (roadmap).
