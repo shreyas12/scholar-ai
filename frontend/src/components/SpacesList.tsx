@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { SpaceFormDialog } from "@/components/SpaceFormDialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { toast } from "@/lib/toast";
 import {
   createSpace,
   deleteSpace,
@@ -33,9 +34,14 @@ export function SpacesList({ onOpen }: { onOpen: (space: Space) => void }) {
 
   async function handleDelete(space: Space) {
     if (!confirm(`Delete "${space.name}"? This removes its documents and index.`)) return;
-    await deleteSpace(space.id);
-    setMenuFor(null);
-    refresh();
+    try {
+      await deleteSpace(space.id);
+      setMenuFor(null);
+      refresh();
+      toast.success(`Deleted "${space.name}"`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to delete space");
+    }
   }
 
   return (

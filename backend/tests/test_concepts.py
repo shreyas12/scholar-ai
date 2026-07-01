@@ -104,8 +104,14 @@ def test_chat_marks_concepts_encountered(client, monkeypatch):
     assert history[1]["concepts"]
 
 
-def test_extract_503_when_ollama_down(client):
-    # no mock, real env has no Ollama
+def test_extract_503_when_ollama_down(client, monkeypatch):
+    # Force Ollama unreachable so the assertion doesn't depend on the environment.
+    from app.services.ollama_client import OllamaUnavailable
+
+    async def down(self, prompt, *, model=None):
+        raise OllamaUnavailable("down")
+
+    monkeypatch.setattr(OllamaClient, "generate", down)
     assert client.post("/api/spaces/ml/concepts/extract").status_code == 503
 
 

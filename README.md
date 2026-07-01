@@ -48,9 +48,12 @@ generation, grading, summaries, query expansion) need
 [Ollama](https://ollama.com) (`ollama pull qwen3:8b`); everything else runs with
 no external services.
 
-Next: Epic 9 — setup / offline / polish (one-command setup, Ollama guidance in
-UI, offline verification, error toasts, demo space) and the flagship Interview
-Readiness mode.
+- **Epic 9:** setup & polish — one-command `setup.sh`, in-UI setup guidance when
+  Ollama/the model isn't ready, error toasts, structured request logging, a
+  fully-offline mode, and a seeded **demo space** so the first run is populated.
+
+Next: the flagship **Interview Readiness mode** — walk a topic's prerequisites
+over the concept graph, analyse gaps, and generate an adaptive interview.
 
 See:
 
@@ -62,21 +65,25 @@ See:
 ```
 backend/    FastAPI app (app/), versioned prompts (prompts/), tests (tests/)
 frontend/   Vite + React + Tailwind + shadcn/ui
-scripts/    dev.sh — one command to run both
+scripts/    setup.sh (one-command setup) · dev.sh (run both) · seed_demo.py
 docs/       PLAN.md, TICKETS.md
 ```
 
 ## Develop
 
 ```bash
+./scripts/setup.sh        # first time: venvs, deps, demo space
 ./scripts/dev.sh          # backend :8000 + frontend :5173
 
 # or individually:
 cd backend && python3 -m venv .venv && ./.venv/bin/pip install -e ".[ml,dev]"
 ./.venv/bin/uvicorn app.main:app --reload      # API
-./.venv/bin/pytest                             # tests
+./.venv/bin/pytest                             # tests (112)
 
 cd frontend && npm install && npm run dev       # UI
+
+# reseed the demo space anytime:
+./backend/.venv/bin/python scripts/seed_demo.py --force
 ```
 
 ## Stack (planned)
@@ -90,11 +97,38 @@ cd frontend && npm install && npm run dev       # UI
 | Vector DB  | FAISS                               |
 | Storage    | Local filesystem (per-space folders)|
 
-## Quickstart (target experience)
+## Quickstart (< 5 min)
 
 ```bash
 git clone <repo> && cd scholar-ai
-# install Ollama, then:
-ollama pull qwen3:8b
-./scripts/dev.sh        # starts backend + frontend
+
+# 1. One command: backend venv + deps, frontend deps, and a seeded demo space.
+./scripts/setup.sh
+
+# 2. Install a local model (skip if you already have Ollama + a model).
+#    On CPU, a non-thinking model like llama3.2:3b is snappiest:
+ollama pull llama3.2:3b
+echo 'SCHOLARAI_OLLAMA_MODEL=llama3.2:3b' >> backend/.env
+
+# 3. Run it.
+./scripts/dev.sh        # backend :8000 + frontend :5173
 ```
+
+Open <http://localhost:5173> and pick the **ScholarAI Demo** space — the concept
+graph and demonstrated mastery are already populated. The app boots and serves
+the UI even without Ollama; the header tells you exactly what's missing and how to
+fix it.
+
+**Model choice.** The app defaults to `qwen3:8b`. `qwen3` models *reason* before
+answering — great quality, but slow on CPU (a long silent pause per call). On a
+CPU-only machine prefer a non-thinking model (`llama3.2:3b`) via
+`SCHOLARAI_OLLAMA_MODEL`.
+
+### Running fully offline
+
+Everything runs locally: the LLM is Ollama on your machine, embeddings are a
+local `sentence-transformers` model, and all data is plain files. The *only*
+outbound network calls are a one-time download of the embedding model from the
+Hugging Face Hub on first ingest (and whatever `ollama pull` fetches). After the
+embedding model is cached, set `SCHOLARAI_OFFLINE=1` (in `backend/.env`) to forbid
+all further network access — the loader then reads only the local cache.

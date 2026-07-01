@@ -11,6 +11,7 @@ import {
   type Source,
 } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import { toast } from "@/lib/toast";
 
 function ConfidenceBadge({ c }: { c: Confidence }) {
   const tone =
@@ -110,7 +111,10 @@ export function ChatTab({ spaceId }: { spaceId: string }) {
       onSources: (sources) => patchAssistant((m) => ({ ...m, sources })),
       onConfidence: (confidence) => patchAssistant((m) => ({ ...m, confidence })),
       onToken: (text) => patchAssistant((m) => ({ ...m, content: m.content + text })),
-      onError: (message) => setError(message),
+      onError: (message) => {
+        setError(message);
+        toast.error(message);
+      },
       onDone: () => {},
     });
     setBusy(false);

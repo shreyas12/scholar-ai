@@ -12,9 +12,10 @@ dependency never blocks boot.
 from __future__ import annotations
 
 import logging
+import time
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 
 from .config import get_settings
@@ -23,6 +24,7 @@ from .storage import ensure_dir, spaces_dir
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 logger = logging.getLogger("scholarai")
+access_logger = logging.getLogger("scholarai.access")
 
 
 @asynccontextmanager
@@ -56,6 +58,28 @@ def create_app() -> FastAPI:
     app.include_router(chat.router)
     app.include_router(concepts.router)
     app.include_router(assessment.router)
+
+    @app.middleware("http")
+    async def log_requests(request: Request, call_next):
+        """Structured access log: one line per request with timing (SA-103).
+
+        Fields are ``key=value`` so logs are greppable/parseable without pulling
+        in a logging framework. Health checks are demoted to DEBUG to avoid noise.
+        """
+        start = time.perf_counter()
+        response = await call_next(request)
+        elapsed_ms = round((time.perf_counter() - start) * 1000, 1)
+        level = logging.DEBUG if request.url.path == "/health" else logging.INFO
+        access_logger.log(
+            level,
+            "method=%s path=%s status=%d duration_ms=%s",
+            request.method,
+            request.url.path,
+            response.status_code,
+            elapsed_ms,
+        )
+        return response
+
     return app
 
 

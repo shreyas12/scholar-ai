@@ -84,8 +84,16 @@ def test_chat_happy_path_streams_and_persists(client, monkeypatch):
     assert history[1]["sources"]
 
 
-def test_chat_reports_error_when_ollama_down(client):
-    # No Ollama running in the test env → expect a clean error event, not a crash.
+def test_chat_reports_error_when_ollama_down(client, monkeypatch):
+    # Force Ollama unreachable (don't depend on whether one is installed) → expect
+    # a clean error event, not a crash.
+    from app.services.ollama_client import OllamaUnavailable
+
+    async def down(self, prompt, *, model=None):
+        raise OllamaUnavailable("down")
+        yield  # pragma: no cover — makes this an async generator
+
+    monkeypatch.setattr(OllamaClient, "generate_stream", down)
     resp = client.post("/api/spaces/ml/chat", json={"question": "What is HNSW?"})
     assert resp.status_code == 200
     events = _events(resp)

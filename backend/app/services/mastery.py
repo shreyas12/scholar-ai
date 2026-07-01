@@ -47,7 +47,7 @@ LEARNING_AT = 40
 # with every successful review (spaced-repetition intuition) so well-practiced
 # concepts decay slower. Per PLAN §7b, decay is computed on read from event
 # timestamps — mastery is retention-aware without ever being mutated.
-BASE_STABILITY_DAYS = 1.0
+BASE_STABILITY_DAYS = 3.0  # a single correct recall keeps a concept "fresh" for days
 REVIEW_THRESHOLD = 0.7  # once retention would fall below this, a review is due
 # A decayed concept never drops below this fraction of its demonstrated score —
 # forgetting dulls but doesn't erase evidence you once produced.

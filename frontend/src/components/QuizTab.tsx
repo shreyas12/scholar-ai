@@ -13,6 +13,7 @@ import {
   type QuizQuestion,
 } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import { toast } from "@/lib/toast";
 
 const TYPE_LABEL: Record<QuizQuestion["type"], string> = {
   recall: "Recall",
@@ -45,7 +46,9 @@ export function QuizTab({
     try {
       setQuiz(await generateQuiz(spaceId, conceptId));
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Could not generate quiz");
+      const msg = e instanceof Error ? e.message : "Could not generate quiz";
+      setError(msg);
+      toast.error(msg);
     } finally {
       setLoading(false);
     }
@@ -217,7 +220,9 @@ function QuestionCard({
       });
       setFeedback(fb);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Grading failed");
+      const msg = e instanceof Error ? e.message : "Grading failed";
+      setError(msg);
+      toast.error(msg);
     } finally {
       setSubmitting(false);
     }

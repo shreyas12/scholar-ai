@@ -9,6 +9,7 @@ import {
   type Document,
 } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import { toast } from "@/lib/toast";
 
 const ACCEPT = ".pdf,.md,.markdown,.txt,.docx";
 
@@ -51,7 +52,9 @@ export function DocumentsTab({
         await uploadDocument(spaceId, file);
         await refresh();
       } catch (e) {
-        setError(e instanceof Error ? e.message : `Failed to upload ${file.name}`);
+        const msg = e instanceof Error ? e.message : `Failed to upload ${file.name}`;
+        setError(msg);
+        toast.error(msg);
       } finally {
         setUploading((u) => u.filter((n) => n !== file.name));
       }

@@ -10,6 +10,7 @@ is lazy-loaded on first use and cached as a process singleton.
 
 from __future__ import annotations
 
+import os
 import threading
 from functools import lru_cache
 
@@ -40,6 +41,11 @@ class EmbeddingService:
         with self._lock:
             if self._model is not None:
                 return self._model
+            # SA-101: in offline mode, tell HF Hub / Transformers not to touch the
+            # network. Set before the import so the libraries pick it up.
+            if get_settings().offline:
+                os.environ.setdefault("HF_HUB_OFFLINE", "1")
+                os.environ.setdefault("TRANSFORMERS_OFFLINE", "1")
             try:
                 from sentence_transformers import SentenceTransformer
             except ImportError as exc:

@@ -32,6 +32,10 @@ class Settings(BaseSettings):
 
     # --- Embeddings ---
     embed_model: str = "BAAI/bge-small-en-v1.5"
+    # Fully-offline mode: once the embedding model is cached (after first run),
+    # set SCHOLARAI_OFFLINE=1 to forbid *all* network calls — the loader stops
+    # hitting the HF Hub for metadata checks. Ollama is always local regardless.
+    offline: bool = False
 
     # --- Chunking / retrieval ---
     chunk_overlap: float = 0.2

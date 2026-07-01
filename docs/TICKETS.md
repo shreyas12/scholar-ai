@@ -167,11 +167,11 @@ graph over the (now richer) advanced chunks.*
 
 ## EPIC 9 — Setup, offline & polish (Phase 6)
 
-- [ ] **SA-100** [INFRA] `M` One-command setup + clear "Ollama not found / model not pulled" guidance in UI.
-- [ ] **SA-101** [INFRA] `S` Offline verification: no network calls after model pull (audit + note in README).
-- [ ] **SA-102** [INFRA] `S` README quickstart validated on a clean machine (< 5 min).
-- [ ] **SA-103** [INFRA] `S` Basic error handling + toasts across FE; backend structured logging.
-- [ ] **SA-104** [INFRA] `S` Seed/demo space for first-run experience.
+- [x] **SA-100** [INFRA] `M` One-command setup + clear "Ollama not found / model not pulled" guidance in UI.
+- [x] **SA-101** [INFRA] `S` Offline verification: no network calls after model pull (audit + note in README).
+- [x] **SA-102** [INFRA] `S` README quickstart validated on a clean machine (< 5 min).
+- [x] **SA-103** [INFRA] `S` Basic error handling + toasts across FE; backend structured logging.
+- [x] **SA-104** [INFRA] `S` Seed/demo space for first-run experience.
 
 ---
 

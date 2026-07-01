@@ -25,6 +25,7 @@ import {
   type MasteryReport,
 } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import { toast } from "@/lib/toast";
 
 export function DashboardTab({
   spaceId,
@@ -64,8 +65,11 @@ export function DashboardTab({
     try {
       await extractConcepts(spaceId);
       await refresh();
+      toast.success("Concepts extracted");
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Extraction failed");
+      const msg = e instanceof Error ? e.message : "Extraction failed";
+      setError(msg);
+      toast.error(msg);
     } finally {
       setExtracting(false);
     }
