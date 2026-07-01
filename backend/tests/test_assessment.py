@@ -168,6 +168,32 @@ def test_misconception_lowers_mastery(client):
     assert m["bucket"] in {"weak", "learning"}  # recognition=0 with a penalty
 
 
+def test_retention_decays_mastery_on_read(client):
+    from datetime import datetime, timedelta, timezone
+
+    from app.services import mastery as mastery_svc
+
+    quiz = client.post("/api/spaces/ml/concepts/hnsw/quiz").json()
+    for q in quiz["questions"]:
+        payload = {"question_id": q["id"], "confidence": 4}
+        if q["type"] == "recognition":
+            payload["selected_index"] = 1
+        else:
+            payload["answer"] = "HNSW is a proximity graph for fast ANN search."
+        client.post(f"/api/spaces/ml/quiz/{quiz['quiz_id']}/answer", json=payload)
+
+    now = datetime.now(timezone.utc)
+    fresh = next(c for c in mastery_svc.concept_records("ml", now=now) if c.concept_id == "hnsw")
+    # A month later, unpractised, the same evidence yields a lower (decayed) score.
+    later = mastery_svc.concept_records("ml", now=now + timedelta(days=30))
+    stale = next(c for c in later if c.concept_id == "hnsw")
+
+    assert stale.mastery < fresh.mastery
+    assert stale.demonstrated == fresh.demonstrated  # evidence itself unchanged
+    assert stale.review_due is True and fresh.review_due is False
+    assert stale.next_review is not None
+
+
 def test_chat_answer_grade_hook_records_evidence(client):
     fb = client.post(
         "/api/spaces/ml/concepts/hnsw/grade-answer",

@@ -92,10 +92,13 @@ async def grade_chat_answer(
 
 @router.get("/mastery", response_model=MasteryReport)
 def mastery_report(space_id: str) -> MasteryReport:
+    from datetime import datetime, timezone
+
+    now = datetime.now(timezone.utc)  # one clock for the whole report
     try:
         return MasteryReport(
-            summary=mastery_svc.summary(space_id),
-            concepts=mastery_svc.concept_records(space_id),
+            summary=mastery_svc.summary(space_id, now=now),
+            concepts=mastery_svc.concept_records(space_id, now=now),
         )
     except SpaceNotFound:
         raise HTTPException(404, f"Space {space_id!r} not found")

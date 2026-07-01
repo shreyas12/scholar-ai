@@ -48,3 +48,51 @@ def test_buckets():
     assert mastery.bucket(74) == "learning"
     assert mastery.bucket(75) == "mastered"
     assert mastery.bucket(100) == "mastered"
+
+
+# --- retention (SA-081) -----------------------------------------------------
+
+from datetime import datetime, timedelta, timezone
+
+T0 = datetime(2026, 7, 1, tzinfo=timezone.utc)
+
+
+def test_retention_full_at_zero_elapsed():
+    s = mastery.stability_days(1, 80)
+    assert mastery.retention_estimate(T0, s, T0) == 1.0
+
+
+def test_retention_decays_over_time():
+    s = mastery.stability_days(1, 80)
+    fresh = mastery.retention_estimate(T0, s, T0 + timedelta(days=1))
+    stale = mastery.retention_estimate(T0, s, T0 + timedelta(days=10))
+    assert 0 < stale < fresh < 1
+
+
+def test_retention_none_when_never_correct():
+    assert mastery.retention_estimate(None, 5.0, T0) == 0.0
+
+
+def test_more_reviews_slow_decay():
+    # Same elapsed time, same competence: more correct reviews → higher stability
+    # → more retained.
+    later = T0 + timedelta(days=5)
+    weak = mastery.retention_estimate(T0, mastery.stability_days(1, 80), later)
+    strong = mastery.retention_estimate(T0, mastery.stability_days(6, 80), later)
+    assert strong > weak
+
+
+def test_next_review_is_after_last_correct():
+    s = mastery.stability_days(3, 90)
+    nxt = datetime.fromisoformat(mastery.next_review_date(T0, s))
+    assert nxt > T0
+    # At the scheduled time retention should sit right around the threshold.
+    assert mastery.retention_estimate(T0, s, nxt) == pytest.approx(
+        mastery.REVIEW_THRESHOLD, abs=0.01
+    )
+
+
+def test_retention_factor_floors():
+    assert mastery.retention_factor(1.0) == 1.0
+    assert mastery.retention_factor(0.0) == mastery.RETENTION_FLOOR
+    assert mastery.RETENTION_FLOOR < mastery.retention_factor(0.5) < 1.0

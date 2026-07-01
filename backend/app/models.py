@@ -144,6 +144,12 @@ class ConceptMastery(BaseModel):
     last_correct: str | None = None
     avg_confidence: float | None = None
     avg_retrieval_confidence: float | None = None
+    # Retention (SA-081): decay-based estimate + scheduling, computed on read.
+    demonstrated: float | None = None  # mastery before retention decay
+    retention: float | None = None  # 0-1, fraction retained since last correct recall
+    last_reviewed: str | None = None
+    next_review: str | None = None
+    review_due: bool = False
 
 
 class MasterySummary(BaseModel):

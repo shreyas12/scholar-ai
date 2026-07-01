@@ -253,6 +253,11 @@ export interface ConceptMastery {
   last_correct: string | null;
   avg_confidence: number | null;
   avg_retrieval_confidence: number | null;
+  demonstrated: number | null;
+  retention: number | null;
+  last_reviewed: string | null;
+  next_review: string | null;
+  review_due: boolean;
 }
 
 export interface MasterySummary {

@@ -32,18 +32,21 @@ subscriptions. No API keys required for the default experience.
   (recall / recognition / application) generated from your material, LLM-judge
   grading for free-text + deterministic MCQ grading, confidence capture,
   misconception flags, an append-only event log, and mastery computed as a
-  replayable projection over that log. A Quiz tab drives it; the Dashboard shows
-  demonstrated mastery per concept.
+  replayable projection over that log. A **retention model** decays mastery from
+  the last correct recall (stability grows with practice) and schedules the next
+  review — all computed on read. A Quiz tab drives it; the Dashboard shows
+  demonstrated mastery, misconceptions, and "review due" per concept.
 
-**105 backend tests pass.** The loop works today: **create a space → upload notes
+**112 backend tests pass.** The loop works today: **create a space → upload notes
 → chat with grounded, confidence-scored citations → build the concept map + graph
-→ quiz yourself and watch demonstrated mastery accumulate**. LLM features (chat
-generation, concept extraction, question generation, grading, summaries, query
-expansion) need [Ollama](https://ollama.com) (`ollama pull qwen3:8b`); everything
-else runs with no external services.
+→ quiz yourself and watch demonstrated mastery accumulate (and decay if you don't
+review)**. LLM features (chat generation, concept extraction, question
+generation, grading, summaries, query expansion) need
+[Ollama](https://ollama.com) (`ollama pull qwen3:8b`); everything else runs with
+no external services.
 
-Next: Phase 5 continued — Epic 7 mastery-formula refinement (retention decay,
-tuned weights) + Epic 8 mastery dashboard polish.
+Next: Epic 8 — learning dashboard polish (weak-concept surfacing, per-concept
+detail cards) + Epic 9 setup/offline polish.
 
 See:
 

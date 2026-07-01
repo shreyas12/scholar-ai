@@ -147,11 +147,11 @@ graph over the (now richer) advanced chunks.*
 
 ## EPIC 7 — Mastery scoring & retention (Phase 5)
 
-- [ ] **SA-080** [BE] `M` Mastery service: combine recall/recognition/application + confidence modifier → per-concept overall (isolated, unit-tested).
-- [ ] **SA-081** [BE] `S` Retention model: last_reviewed, decay-based retention estimate, next_review date.
-- [ ] **SA-082** [BE] `S` Bucketing: Mastered / Learning / Weak / Unknown thresholds.
-- [ ] **SA-083** [BE] `S` Space-level rollup: overall mastery %, counts per bucket.
-- [ ] **SA-084** [BE] `S` Rich per-concept record (§7b): mastery, evidence_count, last_correct, misconceptions, avg_confidence, avg_retrieval_confidence.
+- [x] **SA-080** [BE] `M` Mastery service: combine recall/recognition/application + confidence modifier → per-concept overall (isolated, unit-tested).
+- [x] **SA-081** [BE] `S` Retention model: last_reviewed, decay-based retention estimate, next_review date.
+- [x] **SA-082** [BE] `S` Bucketing: Mastered / Learning / Weak / Unknown thresholds.
+- [x] **SA-083** [BE] `S` Space-level rollup: overall mastery %, counts per bucket.
+- [x] **SA-084** [BE] `S` Rich per-concept record (§7b): mastery, evidence_count, last_correct, misconceptions, avg_confidence, avg_retrieval_confidence.
 
 ---
 

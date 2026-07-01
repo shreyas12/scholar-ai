@@ -22,6 +22,9 @@ Mastered / Learning / Weak / Unknown.
 
 from __future__ import annotations
 
+from datetime import datetime, timedelta, timezone
+from math import exp, log
+
 from ..models import ConceptMastery, MasterySummary
 from . import concepts as concepts_svc
 from . import events as events_svc
@@ -38,9 +41,57 @@ SIGNAL_WEIGHTS = {"recall": 0.35, "recognition": 0.15, "application": 0.50}
 MASTERED_AT = 75
 LEARNING_AT = 40
 
+# --- Retention (SA-081) ------------------------------------------------------
+# A forgetting curve R = exp(-Δt / stability): memory of a correctly-recalled
+# concept decays with time since the last correct recall, but *stability* grows
+# with every successful review (spaced-repetition intuition) so well-practiced
+# concepts decay slower. Per PLAN §7b, decay is computed on read from event
+# timestamps — mastery is retention-aware without ever being mutated.
+BASE_STABILITY_DAYS = 1.0
+REVIEW_THRESHOLD = 0.7  # once retention would fall below this, a review is due
+# A decayed concept never drops below this fraction of its demonstrated score —
+# forgetting dulls but doesn't erase evidence you once produced.
+RETENTION_FLOOR = 0.6
+
 
 def _mean(xs: list[float]) -> float:
     return sum(xs) / len(xs) if xs else 0.0
+
+
+def _parse_ts(ts: str | None) -> datetime | None:
+    if not ts:
+        return None
+    try:
+        dt = datetime.fromisoformat(ts)
+    except ValueError:
+        return None
+    return dt.replace(tzinfo=timezone.utc) if dt.tzinfo is None else dt
+
+
+def stability_days(correct_count: int, demonstrated: float) -> float:
+    """Days for retention to reach ~37% (1/e). Grows with practice + competence."""
+    return BASE_STABILITY_DAYS * (1 + max(0, correct_count)) * (0.5 + demonstrated / 100)
+
+
+def retention_estimate(last_correct: datetime | None, stability: float, now: datetime) -> float:
+    """Fraction of a concept still retained now (0-1). 0 if never recalled correctly."""
+    if last_correct is None:
+        return 0.0
+    dt_days = max(0.0, (now - last_correct).total_seconds() / 86400)
+    return round(exp(-dt_days / stability), 3)
+
+
+def next_review_date(last_correct: datetime | None, stability: float) -> str | None:
+    """When retention would decay to REVIEW_THRESHOLD — the moment to review."""
+    if last_correct is None:
+        return None
+    delta_days = -stability * log(REVIEW_THRESHOLD)
+    return (last_correct + timedelta(days=delta_days)).isoformat()
+
+
+def retention_factor(retention: float) -> float:
+    """Map retention (0-1) to a mastery multiplier floored at RETENTION_FLOOR."""
+    return RETENTION_FLOOR + (1 - RETENTION_FLOOR) * retention
 
 
 def blend(signal_scores: dict[str, float]) -> float:
@@ -77,7 +128,9 @@ def bucket(mastery: float | None) -> str:
     return "weak"
 
 
-def _project_concept(concept_id: str, label: str, coverage: bool, evs: list[dict]) -> ConceptMastery:
+def _project_concept(
+    concept_id: str, label: str, coverage: bool, evs: list[dict], now: datetime
+) -> ConceptMastery:
     if not evs:
         return ConceptMastery(
             concept_id=concept_id,
@@ -103,9 +156,23 @@ def _project_concept(concept_id: str, label: str, coverage: bool, evs: list[dict
     signal_scores = {k: _mean(v) for k, v in by_signal.items() if v}
     misconceptions = sum(1 for e in evs if e.get("misconception_flag"))
     base = blend(signal_scores)
-    mastery = confidence_modifier(base, misconceptions)
+    # Demonstrated competence: what the evidence proves, independent of time.
+    demonstrated = confidence_modifier(base, misconceptions)
 
-    correct_ts = [e["ts"] for e in evs if e.get("correct") and e.get("ts")]
+    correct_ts = [_parse_ts(e.get("ts")) for e in evs if e.get("correct")]
+    correct_ts = [t for t in correct_ts if t is not None]
+    correct_count = len(correct_ts)
+    last_correct = max(correct_ts) if correct_ts else None
+    all_ts = [t for t in (_parse_ts(e.get("ts")) for e in evs) if t is not None]
+
+    # SA-081: retention decays from the last correct recall; fold it into the
+    # score on read (PLAN §7b) so a long-unpractised concept slips buckets.
+    stability = stability_days(correct_count, demonstrated)
+    retention = retention_estimate(last_correct, stability, now)
+    mastery = round(demonstrated * retention_factor(retention), 1)
+    next_review = next_review_date(last_correct, stability)
+    review_due = last_correct is not None and retention < REVIEW_THRESHOLD
+
     confidences = [e["confidence"] for e in evs if isinstance(e.get("confidence"), int)]
     retr = [e["retrieval_confidence"] for e in evs if isinstance(e.get("retrieval_confidence"), (int, float))]
 
@@ -120,15 +187,25 @@ def _project_concept(concept_id: str, label: str, coverage: bool, evs: list[dict
         recognition=round(signal_scores["recognition"], 1) if "recognition" in signal_scores else None,
         application=round(signal_scores["application"], 1) if "application" in signal_scores else None,
         misconceptions=misconceptions,
-        last_correct=max(correct_ts) if correct_ts else None,
+        last_correct=last_correct.isoformat() if last_correct else None,
         avg_confidence=round(_mean([float(c) for c in confidences]), 1) if confidences else None,
         avg_retrieval_confidence=round(_mean([float(r) for r in retr]), 2) if retr else None,
+        demonstrated=demonstrated,
+        retention=retention if last_correct else None,
+        last_reviewed=max(all_ts).isoformat() if all_ts else None,
+        next_review=next_review,
+        review_due=review_due,
     )
 
 
-def concept_records(space_id: str) -> list[ConceptMastery]:
-    """Rich per-concept mastery records (SA-084), projected from the event log."""
+def concept_records(space_id: str, now: datetime | None = None) -> list[ConceptMastery]:
+    """Rich per-concept mastery records (SA-084), projected from the event log.
+
+    ``now`` is injectable so retention is deterministic in tests; it defaults to
+    the current UTC time and is shared across the whole report for consistency.
+    """
     get_space(space_id)
+    now = now or datetime.now(timezone.utc)
     data = concepts_svc.load_concepts(space_id)
     concepts = data.get("concepts", {})
     encountered = progress_svc.encountered_ids(space_id)
@@ -139,7 +216,7 @@ def concept_records(space_id: str) -> list[ConceptMastery]:
         by_concept.setdefault(e.get("concept_id"), []).append(e)
 
     out = [
-        _project_concept(cid, node["label"], cid in encountered, by_concept.get(cid, []))
+        _project_concept(cid, node["label"], cid in encountered, by_concept.get(cid, []), now)
         for cid, node in concepts.items()
     ]
     # Weakest evidence-bearing concepts first — that's what a learner should act on.
@@ -148,9 +225,9 @@ def concept_records(space_id: str) -> list[ConceptMastery]:
     return out
 
 
-def summary(space_id: str) -> MasterySummary:
+def summary(space_id: str, now: datetime | None = None) -> MasterySummary:
     """Space-level rollup (SA-083): overall mastery + bucket counts."""
-    records = concept_records(space_id)
+    records = concept_records(space_id, now=now)
     scored = [r.mastery for r in records if r.mastery is not None]
     counts = {"mastered": 0, "learning": 0, "weak": 0, "unknown": 0}
     for r in records:

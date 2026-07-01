@@ -192,6 +192,18 @@ function MasterySection({ report }: { report: MasteryReport }) {
                         ⚠ {c.misconceptions}
                       </span>
                     )}
+                    {c.review_due && (
+                      <span
+                        className="rounded-full bg-blue-100 px-1.5 text-xs text-blue-700"
+                        title={
+                          c.retention !== null
+                            ? `Retention ~${Math.round(c.retention * 100)}% — time to review`
+                            : "Time to review"
+                        }
+                      >
+                        ↻ review
+                      </span>
+                    )}
                   </span>
                   <span className={cn("text-xs font-medium", style.text)}>
                     {style.label} · {Math.round(c.mastery ?? 0)}%
