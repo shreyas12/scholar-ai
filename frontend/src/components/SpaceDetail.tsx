@@ -21,6 +21,14 @@ const TABS: { key: Tab; label: string; icon: typeof FileText }[] = [
 export function SpaceDetail({ space, onBack }: { space: Space; onBack: () => void }) {
   const [tab, setTab] = useState<Tab>("documents");
   const [docCount, setDocCount] = useState(space.document_count);
+  // Concept to auto-start a quiz on, set when the dashboard sends you to study
+  // a weak concept (SA-091). Cleared when the Quiz tab is opened manually.
+  const [quizConcept, setQuizConcept] = useState<string | null>(null);
+
+  function studyConcept(conceptId: string) {
+    setQuizConcept(conceptId);
+    setTab("quiz");
+  }
 
   return (
     <div>
@@ -37,7 +45,10 @@ export function SpaceDetail({ space, onBack }: { space: Space; onBack: () => voi
         {TABS.map(({ key, label, icon: Icon }) => (
           <button
             key={key}
-            onClick={() => setTab(key)}
+            onClick={() => {
+              if (key === "quiz") setQuizConcept(null); // manual open = free choice
+              setTab(key);
+            }}
             className={cn(
               "flex items-center gap-2 border-b-2 px-4 py-2 text-sm font-medium transition-colors",
               tab === key
@@ -55,8 +66,12 @@ export function SpaceDetail({ space, onBack }: { space: Space; onBack: () => voi
           <DocumentsTab spaceId={space.id} onCountChange={setDocCount} />
         )}
         {tab === "chat" && <ChatTab spaceId={space.id} />}
-        {tab === "quiz" && <QuizTab spaceId={space.id} />}
-        {tab === "dashboard" && <DashboardTab spaceId={space.id} />}
+        {tab === "quiz" && (
+          <QuizTab spaceId={space.id} initialConceptId={quizConcept} />
+        )}
+        {tab === "dashboard" && (
+          <DashboardTab spaceId={space.id} onStudyConcept={studyConcept} />
+        )}
       </div>
     </div>
   );

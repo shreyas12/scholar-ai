@@ -34,8 +34,11 @@ subscriptions. No API keys required for the default experience.
   misconception flags, an append-only event log, and mastery computed as a
   replayable projection over that log. A **retention model** decays mastery from
   the last correct recall (stability grows with practice) and schedules the next
-  review — all computed on read. A Quiz tab drives it; the Dashboard shows
-  demonstrated mastery, misconceptions, and "review due" per concept.
+  review — all computed on read. A Quiz tab drives it; the **learning dashboard**
+  shows bucket counts (mastered / learning / weak / untested), "next study
+  targets" that jump straight into a quiz, and an expandable per-concept card
+  (recall / recognition / application / confidence / retention / evidence / last
+  correct / review-by).
 
 **112 backend tests pass.** The loop works today: **create a space → upload notes
 → chat with grounded, confidence-scored citations → build the concept map + graph
@@ -45,8 +48,9 @@ generation, grading, summaries, query expansion) need
 [Ollama](https://ollama.com) (`ollama pull qwen3:8b`); everything else runs with
 no external services.
 
-Next: Epic 8 — learning dashboard polish (weak-concept surfacing, per-concept
-detail cards) + Epic 9 setup/offline polish.
+Next: Epic 9 — setup / offline / polish (one-command setup, Ollama guidance in
+UI, offline verification, error toasts, demo space) and the flagship Interview
+Readiness mode.
 
 See:
 

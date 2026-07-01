@@ -157,11 +157,11 @@ graph over the (now richer) advanced chunks.*
 
 ## EPIC 8 — Learning dashboard (Phase 5)
 
-- [ ] **SA-090** [FE] `M` Dashboard: overall mastery, concept counts (mastered/learning/weak/unknown), per-concept scores.
-- [ ] **SA-091** [FE] `S` Weak-concept surfacing: "next recommended study targets" list linking into quiz.
-- [ ] **SA-092** [FE] `S` Concept detail: coverage/recall/recognition/application/confidence/retention breakdown (the HNSW example card).
-- [ ] **SA-093** [FE] `S` Language check — copy says "mastered X of Y concepts", never "% of documents read".
-- [ ] **SA-094** [FE] `S` Rich concept card (SA-084): evidence count, last correct, misconceptions, avg confidence, avg retrieval confidence.
+- [x] **SA-090** [FE] `M` Dashboard: overall mastery, concept counts (mastered/learning/weak/unknown), per-concept scores.
+- [x] **SA-091** [FE] `S` Weak-concept surfacing: "next recommended study targets" list linking into quiz.
+- [x] **SA-092** [FE] `S` Concept detail: coverage/recall/recognition/application/confidence/retention breakdown (the HNSW example card).
+- [x] **SA-093** [FE] `S` Language check — copy says "mastered X of Y concepts", never "% of documents read".
+- [x] **SA-094** [FE] `S` Rich concept card (SA-084): evidence count, last correct, misconceptions, avg confidence, avg retrieval confidence.
 
 ---
 

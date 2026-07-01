@@ -1,5 +1,5 @@
 import { Brain, CheckCircle2, Loader2, XCircle, AlertTriangle, GraduationCap } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -20,11 +20,18 @@ const TYPE_LABEL: Record<QuizQuestion["type"], string> = {
   application: "Application",
 };
 
-export function QuizTab({ spaceId }: { spaceId: string }) {
+export function QuizTab({
+  spaceId,
+  initialConceptId = null,
+}: {
+  spaceId: string;
+  initialConceptId?: string | null;
+}) {
   const [concepts, setConcepts] = useState<Concept[] | null>(null);
   const [quiz, setQuiz] = useState<Quiz | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const autoStarted = useRef(false);
 
   useEffect(() => {
     listConcepts(spaceId)
@@ -44,6 +51,16 @@ export function QuizTab({ spaceId }: { spaceId: string }) {
     }
   }
 
+  // Auto-start when the dashboard sent us here to study a specific concept
+  // (SA-091). Runs once; manual tab visits clear initialConceptId upstream.
+  useEffect(() => {
+    if (initialConceptId && !autoStarted.current) {
+      autoStarted.current = true;
+      startQuiz(initialConceptId);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialConceptId]);
+
   if (quiz) {
     return (
       <QuizRunner
@@ -51,6 +68,14 @@ export function QuizTab({ spaceId }: { spaceId: string }) {
         quiz={quiz}
         onExit={() => setQuiz(null)}
       />
+    );
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center gap-2 py-10 text-sm text-muted-foreground">
+        <Loader2 className="h-4 w-4 animate-spin" /> Generating your quiz…
+      </div>
     );
   }
 
