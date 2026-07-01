@@ -10,10 +10,37 @@ subscriptions. No API keys required for the default experience.
 
 ## Status
 
-🚧 Planning phase. See:
+✅ **Phase 0 (skeleton) complete** — FastAPI backend with `/health`, config,
+storage layer, Ollama + embeddings service wrappers, prompt versioning; React +
+Tailwind + shadcn/ui frontend with a live setup-status screen. Next: Phase 1
+(spaces → documents → chat).
+
+See:
 
 - [`docs/PLAN.md`](docs/PLAN.md) — architecture, data model, phasing, key decisions
 - [`docs/TICKETS.md`](docs/TICKETS.md) — the work broken into epics and tickets
+
+## Repo layout
+
+```
+backend/    FastAPI app (app/), versioned prompts (prompts/), tests (tests/)
+frontend/   Vite + React + Tailwind + shadcn/ui
+scripts/    dev.sh — one command to run both
+docs/       PLAN.md, TICKETS.md
+```
+
+## Develop
+
+```bash
+./scripts/dev.sh          # backend :8000 + frontend :5173
+
+# or individually:
+cd backend && python3 -m venv .venv && ./.venv/bin/pip install -e ".[ml,dev]"
+./.venv/bin/uvicorn app.main:app --reload      # API
+./.venv/bin/pytest                             # tests
+
+cd frontend && npm install && npm run dev       # UI
+```
 
 ## Stack (planned)
 

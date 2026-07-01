@@ -10,6 +10,10 @@ venv/
 node_modules/
 dist/
 .vite/
+*.tsbuildinfo
+# tsc -b emits these next to the source config; keep only the .ts sources
+frontend/vite.config.js
+frontend/vite.config.d.ts
 
 # Env & secrets
 .env

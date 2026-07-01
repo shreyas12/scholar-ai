@@ -8,17 +8,17 @@ Legend: **[BE]** backend · **[FE]** frontend · **[INFRA]** tooling/setup ·
 
 ---
 
-## EPIC 0 — Project skeleton (Phase 0)
+## EPIC 0 — Project skeleton (Phase 0) ✅ DONE
 
-- [ ] **SA-001** [INFRA] `S` Repo layout: `backend/`, `frontend/`, `scripts/`, `docs/`, `.gitignore`, LICENSE (MIT), root README.
-- [ ] **SA-002** [BE] `S` FastAPI app boot + `/health` endpoint + CORS for localhost frontend.
-- [ ] **SA-003** [FE] `S` Vite + React + TailwindCSS + shadcn/ui scaffold; hit `/health` from UI.
-- [ ] **SA-004** [BE] `M` Storage layer: resolve data root (`~/scholar-ai-data`), space folder helpers, safe JSON read/write with locking.
-- [ ] **SA-005** [ML] `S` Ollama client wrapper: config (base URL, model), `generate`/`chat`, graceful error if Ollama not running.
-- [ ] **SA-006** [ML] `S` Embedding service: load `bge-small`, `embed(texts) -> vectors`, warm-up on startup.
-- [ ] **SA-007** [INFRA] `S` `scripts/dev.sh` (run backend + frontend), pyproject/requirements, frontend package.json.
-- [ ] **SA-008** [INFRA] `S` Config module + `.env.example` (data dir, ollama url, model, embed model, overlap %, top-k).
-- [ ] **SA-009** [BE] `S` **Prompt versioning convention (adopt now):** all prompts as files under `prompts/*_vN.md` + a loader; every LLM call records the prompt version it used. Cheap now, avoids "why did scores change?" later.
+- [x] **SA-001** [INFRA] `S` Repo layout: `backend/`, `frontend/`, `scripts/`, `docs/`, `.gitignore`, LICENSE (MIT), root README.
+- [x] **SA-002** [BE] `S` FastAPI app boot + `/health` endpoint + CORS for localhost frontend.
+- [x] **SA-003** [FE] `S` Vite + React + TailwindCSS + shadcn/ui scaffold; hit `/health` from UI.
+- [x] **SA-004** [BE] `M` Storage layer: resolve data root (`~/scholar-ai-data`), space folder helpers, safe JSON read/write with locking.
+- [x] **SA-005** [ML] `S` Ollama client wrapper: config (base URL, model), `generate`/`chat`, graceful error if Ollama not running.
+- [x] **SA-006** [ML] `S` Embedding service: load `bge-small`, `embed(texts) -> vectors`, warm-up on startup.
+- [x] **SA-007** [INFRA] `S` `scripts/dev.sh` (run backend + frontend), pyproject/requirements, frontend package.json.
+- [x] **SA-008** [INFRA] `S` Config module + `.env.example` (data dir, ollama url, model, embed model, overlap %, top-k).
+- [x] **SA-009** [BE] `S` **Prompt versioning convention (adopt now):** all prompts as files under `prompts/*_vN.md` + a loader; every LLM call records the prompt version it used. Cheap now, avoids "why did scores change?" later.
 
 ---
 
