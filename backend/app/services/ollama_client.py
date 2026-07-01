@@ -7,6 +7,9 @@ message instead of leaking a raw connection error.
 
 from __future__ import annotations
 
+import json
+from collections.abc import AsyncIterator
+
 import httpx
 
 from ..config import get_settings
@@ -55,6 +58,32 @@ class OllamaClient:
                 resp = await client.post(f"{self.base_url}/api/generate", json=payload)
                 resp.raise_for_status()
                 return resp.json().get("response", "")
+        except httpx.HTTPError as exc:
+            raise OllamaUnavailable(_hint(self.base_url)) from exc
+
+    async def generate_stream(
+        self, prompt: str, *, model: str | None = None
+    ) -> AsyncIterator[str]:
+        """Stream a completion token-by-token (SA-031).
+
+        Yields text deltas. Raises :class:`OllamaUnavailable` if the server can't
+        be reached before the first token.
+        """
+        payload = {"model": model or self.model, "prompt": prompt, "stream": True}
+        try:
+            async with httpx.AsyncClient(timeout=self.timeout) as client:
+                async with client.stream(
+                    "POST", f"{self.base_url}/api/generate", json=payload
+                ) as resp:
+                    resp.raise_for_status()
+                    async for line in resp.aiter_lines():
+                        if not line.strip():
+                            continue
+                        chunk = json.loads(line)
+                        if chunk.get("response"):
+                            yield chunk["response"]
+                        if chunk.get("done"):
+                            break
         except httpx.HTTPError as exc:
             raise OllamaUnavailable(_hint(self.base_url)) from exc
 

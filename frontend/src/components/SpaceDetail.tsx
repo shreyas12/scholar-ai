@@ -1,6 +1,7 @@
 import { ArrowLeft, FileText, MessageSquare, BarChart3 } from "lucide-react";
 import { useState } from "react";
 
+import { ChatTab } from "@/components/ChatTab";
 import { DocumentsTab } from "@/components/DocumentsTab";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -58,9 +59,7 @@ export function SpaceDetail({ space, onBack }: { space: Space; onBack: () => voi
         {tab === "documents" && (
           <DocumentsTab spaceId={space.id} onCountChange={setDocCount} />
         )}
-        {tab === "chat" && (
-          <Placeholder>Chat with your notes — coming in Epic 3.</Placeholder>
-        )}
+        {tab === "chat" && <ChatTab spaceId={space.id} />}
         {tab === "dashboard" && (
           <Placeholder>Mastery dashboard — coming in Phase 6.</Placeholder>
         )}

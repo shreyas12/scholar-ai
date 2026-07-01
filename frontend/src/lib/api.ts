@@ -105,3 +105,69 @@ export async function deleteDocument(spaceId: string, docId: string): Promise<vo
   });
   if (!res.ok && res.status !== 204) throw new Error(`Delete failed: ${res.status}`);
 }
+
+// --- Chat --------------------------------------------------------------------
+
+export interface Source {
+  index: number;
+  chunk_id: string;
+  document: string;
+  page: number | null;
+  score: number;
+}
+
+export interface ChatMessage {
+  role: "user" | "assistant";
+  content: string;
+  sources?: Source[];
+  prompt_version?: string;
+  ts?: string;
+}
+
+export async function getChatHistory(spaceId: string): Promise<ChatMessage[]> {
+  return jsonOrThrow(await fetch(`/api/spaces/${spaceId}/chat/history`));
+}
+
+export interface StreamHandlers {
+  onSources?: (sources: Source[]) => void;
+  onToken?: (text: string) => void;
+  onError?: (message: string) => void;
+  onDone?: () => void;
+}
+
+/** POST a question and consume the NDJSON event stream. */
+export async function streamChat(
+  spaceId: string,
+  question: string,
+  handlers: StreamHandlers
+): Promise<void> {
+  const res = await fetch(`/api/spaces/${spaceId}/chat`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ question }),
+  });
+  if (!res.ok || !res.body) {
+    handlers.onError?.(`Request failed: ${res.status}`);
+    return;
+  }
+
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split("\n");
+    buffer = lines.pop() ?? "";
+    for (const line of lines) {
+      if (!line.trim()) continue;
+      const event = JSON.parse(line);
+      if (event.type === "sources") handlers.onSources?.(event.sources);
+      else if (event.type === "token") handlers.onToken?.(event.text);
+      else if (event.type === "error") handlers.onError?.(event.message);
+      else if (event.type === "done") handlers.onDone?.();
+    }
+  }
+}

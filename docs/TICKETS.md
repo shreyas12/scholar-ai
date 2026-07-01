@@ -22,33 +22,33 @@ Legend: **[BE]** backend · **[FE]** frontend · **[INFRA]** tooling/setup ·
 
 ---
 
-## EPIC 1 — Learning Spaces
+## EPIC 1 — Learning Spaces ✅ DONE
 
-- [ ] **SA-010** [BE] `M` Spaces CRUD API: create / list / rename / delete / open; writes `space.json`; enforces isolation.
-- [ ] **SA-011** [BE] `S` Delete space = remove folder + FAISS index safely (confirm-guarded).
-- [ ] **SA-012** [FE] `M` Spaces list + create/rename/delete UI (shadcn dialogs), empty state.
-- [ ] **SA-013** [FE] `S` Space detail shell with tabs: Documents · Chat · Dashboard.
-
----
-
-## EPIC 2 — Document management (basic, Phase 1)
-
-- [ ] **SA-020** [BE] `M` Upload endpoint: accept PDF/MD/TXT/DOCX, store under `documents/<doc_id>/`, write checksum.
-- [ ] **SA-021** [BE] `M` **Simple** ingest v0: extract text → fixed-size overlap chunks → embed → FAISS. (Unblocks chat before the full pipeline.)
-- [ ] **SA-022** [BE] `S` FAISS per-space index: build/load/append, `id_map.json` (row→chunk_id), persist to `vectors/`.
-- [ ] **SA-023** [BE] `S` Document list + delete API; deleting a doc removes its chunks from the index (rebuild).
-- [ ] **SA-024** [BE] `M` Change detection: on re-upload compare sha256 → re-ingest + rebuild index automatically.
-- [ ] **SA-025** [FE] `M` Documents tab: drag-drop upload, progress/status per doc, list with size/type, delete.
+- [x] **SA-010** [BE] `M` Spaces CRUD API: create / list / rename / delete / open; writes `space.json`; enforces isolation.
+- [x] **SA-011** [BE] `S` Delete space = remove folder + FAISS index safely (confirm-guarded).
+- [x] **SA-012** [FE] `M` Spaces list + create/rename/delete UI (shadcn dialogs), empty state.
+- [x] **SA-013** [FE] `S` Space detail shell with tabs: Documents · Chat · Dashboard.
 
 ---
 
-## EPIC 3 — AI Chat (Phase 1)
+## EPIC 2 — Document management (basic, Phase 1) ✅ DONE
 
-- [ ] **SA-030** [BE] `M` Retrieval service: embed query → FAISS top-k → assemble context + citations.
-- [ ] **SA-031** [BE] `M` Chat endpoint (streaming): grounded prompt ("answer only from context, cite doc+page"), stream tokens.
-- [ ] **SA-032** [BE] `S` Return structured sources (doc name, page, heading path) alongside the answer.
-- [ ] **SA-033** [FE] `M` Chat UI: message list, streaming render, source chips, empty/error states (Ollama down).
-- [ ] **SA-034** [BE] `S` Persist chat history per space (`chat.json`) — optional but cheap; feeds evidence later.
+- [x] **SA-020** [BE] `M` Upload endpoint: accept PDF/MD/TXT/DOCX, store under `documents/<doc_id>/`, write checksum.
+- [x] **SA-021** [BE] `M` **Simple** ingest v0: extract text → fixed-size overlap chunks → embed → FAISS. (Unblocks chat before the full pipeline.)
+- [x] **SA-022** [BE] `S` FAISS per-space index: build/load/append, `id_map.json` (row→chunk_id), persist to `vectors/`.
+- [x] **SA-023** [BE] `S` Document list + delete API; deleting a doc removes its chunks from the index (rebuild).
+- [x] **SA-024** [BE] `M` Change detection: on re-upload compare sha256 → re-ingest + rebuild index automatically.
+- [x] **SA-025** [FE] `M` Documents tab: drag-drop upload, progress/status per doc, list with size/type, delete.
+
+---
+
+## EPIC 3 — AI Chat (Phase 1) ✅ DONE
+
+- [x] **SA-030** [BE] `M` Retrieval service: embed query → FAISS top-k → assemble context + citations.
+- [x] **SA-031** [BE] `M` Chat endpoint (streaming): grounded prompt ("answer only from context, cite doc+page"), stream tokens.
+- [x] **SA-032** [BE] `S` Return structured sources (doc name, page, heading path) alongside the answer.
+- [x] **SA-033** [FE] `M` Chat UI: message list, streaming render, source chips, empty/error states (Ollama down).
+- [x] **SA-034** [BE] `S` Persist chat history per space (`chat.json`) — optional but cheap; feeds evidence later.
 
 ---
 

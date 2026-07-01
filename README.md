@@ -10,10 +10,20 @@ subscriptions. No API keys required for the default experience.
 
 ## Status
 
-✅ **Phase 0 (skeleton) complete** — FastAPI backend with `/health`, config,
-storage layer, Ollama + embeddings service wrappers, prompt versioning; React +
-Tailwind + shadcn/ui frontend with a live setup-status screen. Next: Phase 1
-(spaces → documents → chat).
+✅ **Phase 0 (skeleton) + Phase 1 (core loop) complete.**
+
+- **Phase 0:** FastAPI backend (`/health`, config, storage, Ollama + embeddings
+  wrappers, prompt versioning); React/Tailwind/shadcn frontend with setup status.
+- **Phase 1:** Learning spaces (CRUD), document upload + simple ingest
+  (extract → chunk → embed → FAISS) with change detection, and grounded
+  streaming chat with citations + persisted history. **36 backend tests pass**,
+  including real embedding + FAISS retrieval.
+
+The full loop works today: **create a space → upload notes → chat with citations**.
+Chat generation needs [Ollama](https://ollama.com) running (`ollama pull qwen3:8b`);
+everything else runs with no external services.
+
+Next: Phase 2 (basic concept extraction — the mastery differentiator).
 
 See:
 
